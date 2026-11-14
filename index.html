@@ -51,12 +51,12 @@
     }
 
     // --- KLASÖRDEKİ TÜM DOSYALARI ÇEK (MULTIPLE FETCH) ---
+    // --- KLASÖRDEKİ TÜM DOSYALARI ÇEK (MULTIPLE FETCH - AKILLI FORMAT) ---
     async function fetchAllGitHubData() {
       try {
         const kpiCount = document.getElementById('kpi-count');
         kpiCount.textContent = 'Klasör Taranıyor...';
 
-        // 1. GitHub API ile klasörün içindekileri listele
         const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FOLDER_PATH}`;
         const dirResponse = await fetch(apiUrl);
         
@@ -65,8 +65,6 @@
         }
 
         const files = await dirResponse.json();
-        
-        // 2. Sadece CSV ve JSON veri dosyalarını filtrele
         const dataFiles = files.filter(f => f.name.endsWith('.csv') || f.name.endsWith('.json'));
 
         if(dataFiles.length === 0) {
@@ -79,58 +77,80 @@
         hotspotsData.length = 0;
         const yearSet = new Set();
 
-        // 3. Bulunan tüm dosyaları paralel (aynı anda) indir
         await Promise.all(dataFiles.map(async (file) => {
-          const fileRes = await fetch(file.download_url);
-          const textData = await fileRes.text();
+          try {
+            const fileRes = await fetch(file.download_url);
+            const textData = await fileRes.text();
 
-          let rawData = file.name.endsWith('.json') ? JSON.parse(textData) : parseCSV(textData);
+            // Veriyi parse et
+            let rawData = file.name.endsWith('.json') ? JSON.parse(textData) : parseCSV(textData);
+            let dataArray = [];
 
-          // 4. Verileri Birleştir (Mapping)
-          rawData.forEach(item => {
-            const dateStr = item.acq_date || item.date || item.tarih || '';
-            let yr = 2023, mo = 1;
-            
-            if (dateStr.length >= 7) {
-              yr = parseInt(dateStr.substring(0,4));
-              mo = parseInt(dateStr.substring(5,7));
-            } else if (item.year) {
-              yr = parseInt(item.year);
-              mo = parseInt(item.month || 7);
+            // ----------------------------------------------------
+            // AKILLI FORMAT TESPİTİ (GeoJSON veya Obje Koruması)
+            // ----------------------------------------------------
+            if (Array.isArray(rawData)) {
+              dataArray = rawData; // Direkt liste formatı
+            } else if (rawData && rawData.features && Array.isArray(rawData.features)) {
+              // GeoJSON Formatı ise (NASA verilerinde çok sık görülür)
+              dataArray = rawData.features.map(f => ({
+                ...f.properties,
+                lat: f.geometry?.coordinates ? f.geometry.coordinates[1] : (f.properties?.lat || f.properties?.latitude),
+                lon: f.geometry?.coordinates ? f.geometry.coordinates[0] : (f.properties?.lon || f.properties?.longitude)
+              }));
+            } else if (rawData && typeof rawData === 'object') {
+              // Veriler objenin içindeki rastgele bir listede gizliyse (örn: { "data": [...] })
+              const arrayKey = Object.keys(rawData).find(key => Array.isArray(rawData[key]));
+              dataArray = arrayKey ? rawData[arrayKey] : [rawData];
             }
-            
-            yearSet.add(yr);
 
-            const conf = String(item.confidence || 'nominal').toLowerCase();
-            const isHighConf = (conf === 'h' || conf === 'high' || parseInt(conf) >= 80);
-            const dN = String(item.daynight || item.day_night || 'D').toUpperCase();
-            
-            const lat = parseFloat(item.latitude || item.lat || 0);
-            const lon = parseFloat(item.longitude || item.lon || 0);
+            // Artık dataArray kesinlikle bir liste, forEach güvenle çalışır!
+            dataArray.forEach(item => {
+              const dateStr = item.acq_date || item.date || item.tarih || '';
+              let yr = 2023, mo = 1;
+              
+              if (dateStr.length >= 7) {
+                yr = parseInt(dateStr.substring(0,4));
+                mo = parseInt(dateStr.substring(5,7));
+              } else if (item.year) {
+                yr = parseInt(item.year);
+                mo = parseInt(item.month || 7);
+              }
+              
+              yearSet.add(yr);
 
-            if(lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
-              hotspotsData.push({
-                year: yr, month: mo, lat: lat, lon: lon,
-                sensor: (item.instrument || item.sensor || item.satellite || 'MODIS').toUpperCase(),
-                timePass: (dN === 'N' || dN === 'NIGHT') ? 'night' : 'day',
-                confidence: isHighConf ? 'high' : 'nominal',
-                rawCount: parseInt(item.raw_count || item.count || 1),
-                harmCount: parseInt(item.harmonized_count || item.uyum_sayisi || 1), 
-                frp: parseFloat(item.frp || item.power || 0.0),
-                anomalyZ: parseFloat(item.anomaly_z || 0.0)
-              });
-            }
-          });
+              const conf = String(item.confidence || 'nominal').toLowerCase();
+              const isHighConf = (conf === 'h' || conf === 'high' || parseInt(conf) >= 80);
+              const dN = String(item.daynight || item.day_night || 'D').toUpperCase();
+              
+              const lat = parseFloat(item.lat || item.latitude || 0);
+              const lon = parseFloat(item.lon || item.longitude || 0);
+
+              if(lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
+                hotspotsData.push({
+                  year: yr, month: mo, lat: lat, lon: lon,
+                  sensor: (item.instrument || item.sensor || item.satellite || 'MODIS').toUpperCase(),
+                  timePass: (dN === 'N' || dN === 'NIGHT') ? 'night' : 'day',
+                  confidence: isHighConf ? 'high' : 'nominal',
+                  rawCount: parseInt(item.raw_count || item.count || 1),
+                  harmCount: parseInt(item.harmonized_count || item.uyum_sayisi || 1), 
+                  frp: parseFloat(item.frp || item.power || 0.0),
+                  anomalyZ: parseFloat(item.anomaly_z || 0.0)
+                });
+              }
+            });
+          } catch (fileErr) {
+            console.warn(`${file.name} okunamadı:`, fileErr);
+          }
         }));
 
-        state.availableYears = Array.from(yearSet).sort();
+        state.availableYears = Array.from(yearSet).sort((a,b) => a - b);
         if(state.availableYears.length > 0) {
           document.getElementById('year-slider').min = state.availableYears[0]; 
           document.getElementById('year-slider').max = state.availableYears[state.availableYears.length-1];
           document.getElementById('year-slider').value = state.availableYears[0];
         }
 
-        // 5. Her şey bittikten sonra haritayı çiz
         initMap();
         initCharts();
         refreshAll();
