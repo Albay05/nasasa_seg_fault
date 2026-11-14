@@ -2,30 +2,181 @@
 <html lang="tr" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=devurlice-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IGNIS // MODIS & VIIRS Komuta Merkezi</title>
 
-  <!-- Google Fonts: Inter (Apple San Francisco alternatif) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-   // ---------------------------------------------------------
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            apple: { gray: '#1C1C1E', gray2: '#2C2C2E', gray3: '#3A3A3C', orange: '#FF9500', red: '#FF3B30', blue: '#0A84FF', green: '#32D74B' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
+    body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
+    .ios-panel { background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); border-radius: 20px; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #1C1C1E; }
+    .leaflet-control-attribution { display: none !important; }
+    .segmented-control { background: rgba(118, 118, 128, 0.24); padding: 2px; border-radius: 8px; display: flex; }
+    .segmented-btn { flex: 1; text-align: center; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; color: #EBEBF5; transition: all 0.2s ease; cursor: pointer; }
+    .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .ios-toggle { width: 44px; height: 24px; border-radius: 24px; background: #39393D; position: relative; cursor: pointer; transition: background 0.3s ease; }
+    .ios-toggle.active { background: #32D74B; }
+    .ios-toggle-knob { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2); }
+    .ios-toggle.active .ios-toggle-knob { transform: translateX(20px); }
+    input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+    input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.2); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; border: 1px solid #d1d1d6; margin-top: -6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+  </style>
+</head>
+
+<body class="relative w-screen h-screen overflow-hidden antialiased text-sm">
+
+  <div id="map"></div>
+
+  <div id="aoi-banner" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-30 ios-panel px-4 py-2 text-xs flex items-center gap-3">
+    <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
+    <span>Haritada bir alan çizmek için tıklayın ve sürükleyin.</span>
+    <button onclick="cancelAOIDraw()" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
+  </div>
+
+  <aside class="fixed top-6 left-6 bottom-6 w-[340px] z-20 flex flex-col gap-4 pointer-events-auto">
+    <div class="ios-panel p-5 flex flex-col gap-4">
+      <div class="flex items-center justify-between mb-1">
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
+          <p class="text-[11px] text-gray-400 font-medium mt-0.5">FIRMS Gelişmiş Veri Motoru</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Senaryo Seçimi</label>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition">Tüm Alan</button>
+          <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz/Ege</button>
+          <button onclick="selectScenario('cukurova')" id="scen-cukurova" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Güney/Doğu</button>
+          <button onclick="selectScenario('viirs2012')" id="scen-viirs2012" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Merkez/Kuzey</button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Harita Katmanları</label>
+        
+        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5 mb-1">
+          <span class="text-xs text-gray-300 flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-[#4A3C31] border border-[#FF5500]/50 rounded-sm"></span> Yanan Alanlar (Burned Area)</span>
+          <div id="burned-toggle" onclick="toggleBurnedArea()" class="ios-toggle">
+            <div class="ios-toggle-knob"></div>
+          </div>
+        </div>
+
+        <div class="segmented-control">
+          <div onclick="setMapDisplayMode('h3')" id="mode-h3" class="segmented-btn active">Isı Yoğunluğu</div>
+          <div onclick="setMapDisplayMode('sensor')" id="mode-sensor" class="segmented-btn">Sensör İzleri</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="startAOIDraw()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5">
+          <span class="text-apple-blue text-sm">⛶</span> Alan Çiz
+        </button>
+        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden bg-apple-red/20 text-apple-red text-xs px-3 rounded-lg border border-apple-red/30 hover:bg-apple-red/30">✕</button>
+      </div>
+    </div>
+
+    <div class="ios-panel p-4 grid grid-cols-2 gap-3 flex-1">
+      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
+        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span> AKTİF NOKTA
+        </div>
+        <div id="kpi-count" class="text-2xl font-semibold text-white tracking-tight mt-1">Yükleniyor..</div>
+      </div>
+      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
+        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span> ORT. ENERJİ
+        </div>
+        <div id="kpi-frp" class="text-2xl font-semibold text-white tracking-tight mt-1">0.0</div>
+        <div class="text-[9px] text-gray-500 mt-0.5">Megawatt (MW)</div>
+      </div>
+    </div>
+  </aside>
+
+  <aside class="fixed top-6 right-6 bottom-6 w-[400px] z-20 flex flex-col gap-4 pointer-events-auto">
+    <div class="ios-panel p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Sensör Uyumlaştırma</h2>
+          <p id="r2-score" class="text-[11px] text-apple-green mt-0.5">Aktif</p>
+        </div>
+        <div id="harm-toggle" onclick="toggleHarmonization()" class="ios-toggle active">
+          <div class="ios-toggle-knob"></div>
+        </div>
+      </div>
+      <p id="harm-desc" class="text-[10px] text-gray-400 leading-relaxed">
+        Veriler kalibrasyon mekanizmasından geçirilmiş haliyle gösteriliyor.
+      </p>
+    </div>
+
+    <div class="ios-panel p-5 flex flex-col flex-1 min-h-0">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-white">Aylık & Yıllık Matris</h3>
+      </div>
+      <div id="calendar-chart" class="w-full flex-1"></div>
+    </div>
+
+    <div class="ios-panel p-5 flex flex-col h-[220px] shrink-0">
+      <h3 class="text-sm font-semibold text-white mb-2">Zaman Serisi (Trend)</h3>
+      <div id="timeseries-chart" class="w-full flex-1"></div>
+    </div>
+  </aside>
+
+  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[540px] z-20 ios-panel p-3 px-5 flex flex-col gap-2 pointer-events-auto">
+    <div class="flex justify-between items-end">
+      <button id="play-btn" onclick="togglePlayTimeline()" class="text-xl text-white hover:text-gray-300 transition w-8">▶</button>
+      <div class="text-center flex-1">
+        <span id="timeline-label" class="text-sm font-semibold text-white">Tüm Yıllar</span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="setBaseMap('dark')" id="bm-dark" class="text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition">Koyu</button>
+        <button onclick="setBaseMap('sat')" id="bm-sat" class="text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition">Uydu</button>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 mt-1">
+      <input id="year-slider" type="range" min="2000" max="2026" value="2000" oninput="onYearSliderInput(this.value)" class="flex-1" />
+    </div>
+  </footer>
+
+  <script>
+    // ---------------------------------------------------------
     // 1. GITHUB DEPO VE KLASÖR AYARLARI
     // ---------------------------------------------------------
-    const REPO_OWNER = 'Albay05';            
-    const REPO_NAME = 'sistem_odevleri';     
-    const FOLDER_PATH = '';  // KLASÖR YOKSA BURAYI BÖYLE BOŞ BIRAKIN
+    const REPO_OWNER = 'Albay05';
+    const REPO_NAME = 'sistem_odevleri';
+    // Artık tam olarak CSV'lerin olduğu klasöre bakıyoruz.
+    const FOLDER_PATH = 'public/data/yearly_csv';
 
-    // 2. STATE & DATA 
     const state = {
-      harmonized: true, calibMethod: 'quantile', mapMode: 'h3',
-      scenario: 'all', selectedYear: 0, selectedMonth: 0,
-      timePass: 'all', confidence: 'all', showBurnedArea: false,
-      colorRamp: 'YlOrRd', aoiBounds: null, playing: false, playTimer: null,
+      harmonized: true, mapMode: 'h3', scenario: 'all', selectedYear: 0,
+      showBurnedArea: false, colorRamp: 'YlOrRd', aoiBounds: null, playing: false, playTimer: null,
       availableYears: [] 
     };
 
@@ -33,7 +184,6 @@
     const COLOR_RAMPS = { YlOrRd: ['#ffefa8', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'] };
     const hotspotsData = [];
 
-    // --- CSV PARSER ---
     function parseCSV(csvText) {
       const lines = csvText.trim().split('\n');
       if(lines.length < 2) return [];
@@ -50,8 +200,6 @@
       return data;
     }
 
-    // --- KLASÖRDEKİ TÜM DOSYALARI ÇEK (MULTIPLE FETCH) ---
-    // --- KLASÖRDEKİ TÜM DOSYALARI ÇEK (MULTIPLE FETCH - AKILLI FORMAT) ---
     async function fetchAllGitHubData() {
       try {
         const kpiCount = document.getElementById('kpi-count');
@@ -61,19 +209,20 @@
         const dirResponse = await fetch(apiUrl);
         
         if (!dirResponse.ok) {
-          throw new Error("Klasör bulunamadı. Lütfen depo adını ve klasör yolunu kontrol edin.");
+          throw new Error("Klasör bulunamadı.");
         }
 
         const files = await dirResponse.json();
-        const dataFiles = files.filter(f => f.name.endsWith('.csv') || f.name.endsWith('.json'));
+        // Sadece .csv uzantılı veri dosyalarını alıyoruz
+        const dataFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
 
         if(dataFiles.length === 0) {
           kpiCount.textContent = 'Veri Yok';
-          alert("Belirtilen klasörde hiç .csv veya .json dosyası bulunamadı.");
+          alert("Belirtilen klasörde hiç .csv dosyası bulunamadı.");
           return;
         }
 
-        kpiCount.textContent = `${dataFiles.length} Dosya İndiriliyor...`;
+        kpiCount.textContent = `${dataFiles.length} Dosya...`;
         hotspotsData.length = 0;
         const yearSet = new Set();
 
@@ -81,61 +230,33 @@
           try {
             const fileRes = await fetch(file.download_url);
             const textData = await fileRes.text();
+            let rawData = parseCSV(textData);
 
-            // Veriyi parse et
-            let rawData = file.name.endsWith('.json') ? JSON.parse(textData) : parseCSV(textData);
-            let dataArray = [];
-
-            // ----------------------------------------------------
-            // AKILLI FORMAT TESPİTİ (GeoJSON veya Obje Koruması)
-            // ----------------------------------------------------
-            if (Array.isArray(rawData)) {
-              dataArray = rawData; // Direkt liste formatı
-            } else if (rawData && rawData.features && Array.isArray(rawData.features)) {
-              // GeoJSON Formatı ise (NASA verilerinde çok sık görülür)
-              dataArray = rawData.features.map(f => ({
-                ...f.properties,
-                lat: f.geometry?.coordinates ? f.geometry.coordinates[1] : (f.properties?.lat || f.properties?.latitude),
-                lon: f.geometry?.coordinates ? f.geometry.coordinates[0] : (f.properties?.lon || f.properties?.longitude)
-              }));
-            } else if (rawData && typeof rawData === 'object') {
-              // Veriler objenin içindeki rastgele bir listede gizliyse (örn: { "data": [...] })
-              const arrayKey = Object.keys(rawData).find(key => Array.isArray(rawData[key]));
-              dataArray = arrayKey ? rawData[arrayKey] : [rawData];
-            }
-
-            // Artık dataArray kesinlikle bir liste, forEach güvenle çalışır!
-            dataArray.forEach(item => {
-              const dateStr = item.acq_date || item.date || item.tarih || '';
-              let yr = 2023, mo = 1;
+            rawData.forEach(item => {
+              // Sizin veri setinize göre sütunları alıyoruz (lat, lon, acq_date, frp_harm, sensors)
+              const dateStr = item.acq_date || '';
+              let yr = 2000, mo = 1;
               
               if (dateStr.length >= 7) {
                 yr = parseInt(dateStr.substring(0,4));
                 mo = parseInt(dateStr.substring(5,7));
-              } else if (item.year) {
-                yr = parseInt(item.year);
-                mo = parseInt(item.month || 7);
-              }
+              } 
               
-              yearSet.add(yr);
-
-              const conf = String(item.confidence || 'nominal').toLowerCase();
-              const isHighConf = (conf === 'h' || conf === 'high' || parseInt(conf) >= 80);
-              const dN = String(item.daynight || item.day_night || 'D').toUpperCase();
+              if(!isNaN(yr) && yr > 0) yearSet.add(yr);
               
-              const lat = parseFloat(item.lat || item.latitude || 0);
-              const lon = parseFloat(item.lon || item.longitude || 0);
+              const lat = parseFloat(item.lat || 0);
+              const lon = parseFloat(item.lon || 0);
+              const frp = parseFloat(item.frp_harm || 0);
+              const sensor = (item.sensors || 'MODIS').toUpperCase();
 
               if(lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
                 hotspotsData.push({
                   year: yr, month: mo, lat: lat, lon: lon,
-                  sensor: (item.instrument || item.sensor || item.satellite || 'MODIS').toUpperCase(),
-                  timePass: (dN === 'N' || dN === 'NIGHT') ? 'night' : 'day',
-                  confidence: isHighConf ? 'high' : 'nominal',
-                  rawCount: parseInt(item.raw_count || item.count || 1),
-                  harmCount: parseInt(item.harmonized_count || item.uyum_sayisi || 1), 
-                  frp: parseFloat(item.frp || item.power || 0.0),
-                  anomalyZ: parseFloat(item.anomaly_z || 0.0)
+                  sensor: sensor,
+                  // Basit simülasyon, çünkü verinizde harmCount veya rawCount net ayrılmamış
+                  harmCount: 1, 
+                  rawCount: 1, 
+                  frp: frp
                 });
               }
             });
@@ -162,7 +283,6 @@
       }
     }
 
-    // MAP SETUP & HARİTA KATMANLARI
     let map, baseTileLayer, hotspotLayerGroup, burnedLayerGroup, aoiRectLayer = null, drawingAOI = false, aoiStartLatLng = null;
 
     function initMap() {
@@ -170,7 +290,6 @@
       map = L.map('map', { center: [38.9, 35.2], zoom: 6, zoomControl: false, preferCanvas: true });
       burnedLayerGroup = L.layerGroup().addTo(map); 
       hotspotLayerGroup = L.layerGroup().addTo(map); 
-
       setBaseMap('dark');
 
       map.on('click', (e) => {
@@ -184,7 +303,6 @@
           drawingAOI = false; aoiStartLatLng = null;
           document.getElementById('aoi-banner').classList.add('hidden');
           document.getElementById('clear-aoi-btn').classList.remove('hidden');
-          document.getElementById('active-region-label').textContent = 'Özel Seçili Alan';
           refreshAll();
         }
       });
@@ -200,26 +318,12 @@
       document.getElementById('bm-sat').className = type === 'sat' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
     }
 
-    // UI CONTROLS & FILTERS
     function updateSegmentedControl(groupId, activeId) {
-      const items = { 'timePass': ['f-time-all', 'f-time-day', 'f-time-night'], 'confidence': ['f-conf-all', 'f-conf-high'] };
-      if (items[groupId]) {
-        items[groupId].forEach(id => {
-          const el = document.getElementById(id);
-          if (id === activeId) el.classList.add('active'); else el.classList.remove('active');
-        });
-      } else {
-        ['h3', 'sensor', 'anomaly', 'quantile', 'ratio', 'frp'].forEach(id => {
-          const el = document.getElementById(`mode-${id}`) || document.getElementById(`m-${id}`);
-          if(el && (id === activeId || el.parentElement.id === groupId)) {
-              if(id === activeId) el.classList.add('active');
-              else if(el.parentElement.contains(document.getElementById(activeId))) el.classList.remove('active');
-          }
-        });
-      }
+      ['h3', 'sensor'].forEach(id => {
+        const el = document.getElementById(`mode-${id}`);
+        if(el) { if(id === activeId) el.classList.add('active'); else el.classList.remove('active'); }
+      });
     }
-
-    function setFilter(type, value) { state[type] = value; updateSegmentedControl(type, type === 'timePass' ? `f-time-${value}` : `f-conf-${value}`); refreshAll(); }
     
     function toggleBurnedArea() {
       state.showBurnedArea = !state.showBurnedArea;
@@ -233,15 +337,14 @@
       const toggle = document.getElementById('harm-toggle');
       if (state.harmonized) {
         toggle.classList.add('active');
-        document.getElementById('r2-score').textContent = 'Aktif'; document.getElementById('r2-score').className = 'text-[11px] text-apple-green mt-0.5';
+        document.getElementById('r2-score').textContent = 'Aktif'; 
       } else {
         toggle.classList.remove('active');
-        document.getElementById('r2-score').textContent = 'Kapalı (Ham Veri)'; document.getElementById('r2-score').className = 'text-[11px] text-apple-red mt-0.5';
+        document.getElementById('r2-score').textContent = 'Kapalı'; 
       }
       refreshAll();
     }
 
-    function setCalibMethod(method) { state.calibMethod = method; updateSegmentedControl(null, method); refreshAll(); }
     function setMapDisplayMode(mode) { state.mapMode = mode; updateSegmentedControl(null, mode); renderMapHotspots(); }
 
     function selectScenario(scen) {
@@ -251,16 +354,15 @@
         btn.className = (s === scen) ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition' : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
       });
 
-      if (scen === 'all') { state.selectedYear = 0; map.flyTo([38.9, 35.2], 6); document.getElementById('active-region-label').textContent = 'Tüm Türkiye'; }
-      else if (scen === 'mugla2021') { state.selectedYear = 2021; map.flyTo([36.85, 29.5], 8); document.getElementById('active-region-label').textContent = 'Akdeniz/Ege'; }
-      else if (scen === 'cukurova') { state.selectedYear = 0; map.flyTo([37.2, 37.5], 7); document.getElementById('active-region-label').textContent = 'Güney/Doğu'; }
-      else if (scen === 'viirs2012') { state.selectedYear = 0; map.flyTo([39.9, 32.8], 6); document.getElementById('active-region-label').textContent = 'İç Anadolu/Kuzey'; }
+      if (scen === 'all') { state.selectedYear = 0; map.flyTo([38.9, 35.2], 6); }
+      else if (scen === 'mugla2021') { state.selectedYear = 2021; map.flyTo([36.85, 29.5], 8); }
+      else if (scen === 'cukurova') { state.selectedYear = 0; map.flyTo([37.2, 37.5], 7); }
+      else if (scen === 'viirs2012') { state.selectedYear = 0; map.flyTo([39.9, 32.8], 6); }
       
       document.getElementById('year-slider').value = state.selectedYear || 2000;
       refreshAll();
     }
 
-    // RENDERING & CHARTS
     function getFilteredHotspots() {
       return hotspotsData.filter(h => {
         if (state.selectedYear > 0 && h.year !== state.selectedYear) return false;
@@ -268,8 +370,6 @@
         if (state.scenario === 'cukurova' && (h.lat > 38.0 || h.lon < 34.0)) return false; 
         if (state.scenario === 'viirs2012' && (h.lat < 38.5 || h.lon < 31.0)) return false; 
         if (state.aoiBounds && !state.aoiBounds.contains([h.lat, h.lon])) return false;
-        if (state.timePass !== 'all' && h.timePass !== state.timePass) return false;
-        if (state.confidence === 'high' && h.confidence !== 'high') return false;
         return true;
       });
     }
@@ -286,7 +386,7 @@
         filtered.forEach(d => {
           const k = `${Math.round(d.lat*5)},${Math.round(d.lon*5)}`;
           if(!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0 };
-          grid[k].count += (state.harmonized ? d.harmCount : d.rawCount);
+          grid[k].count += 1;
         });
 
         Object.values(grid).forEach(c => {
@@ -300,16 +400,13 @@
       }
 
       filtered.forEach(d => {
-        const val = state.harmonized ? d.harmCount : d.rawCount;
-        const ratio = Math.min(1, val / (state.harmonized ? 40 : 100));
+        const ratio = Math.min(1, d.frp / 100);
         let color = ramp[Math.floor(ratio * (ramp.length - 1))];
-        let radius = Math.max(3, Math.min(12, 3 + Math.sqrt(val) * 1.0));
+        let radius = Math.max(3, Math.min(10, 3 + Math.sqrt(d.frp) * 0.5));
 
         if (state.mapMode === 'sensor') { 
-          color = (d.sensor.includes('MOD') || d.sensor.includes('AQUA') || d.sensor.includes('TERRA')) ? '#0A84FF' : '#FF3B30'; 
-          radius = color === '#0A84FF' ? 5 : 3; 
-        } else if (state.mapMode === 'anomaly') { 
-          color = d.anomalyZ > 2.0 ? '#FF3B30' : (d.anomalyZ > 0.8 ? '#FF9500' : '#32D74B'); 
+          color = (d.sensor.includes('MOD')) ? '#0A84FF' : '#FF3B30'; 
+          radius = color === '#0A84FF' ? 4 : 3; 
         }
         L.circleMarker([d.lat, d.lon], { radius, color: color, weight: 1, fillColor: color, fillOpacity: 0.75 }).addTo(hotspotLayerGroup);
       });
@@ -326,22 +423,11 @@
 
     function updateChartsAndKPIs() {
       const filtered = getFilteredHotspots();
-      let totalHarm = 0, totalRaw = 0, totalFrp = 0;
-      const monthTotals = new Array(12).fill(0);
-
-      filtered.forEach(h => { 
-        totalHarm += h.harmCount; totalRaw += h.rawCount; totalFrp += h.frp; 
-        monthTotals[h.month - 1] += (state.harmonized ? h.harmCount : h.rawCount); 
-      });
+      let totalFrp = 0;
+      filtered.forEach(h => { totalFrp += h.frp; });
       
-      const displayedCount = state.harmonized ? totalHarm : totalRaw;
-      document.getElementById('kpi-count').textContent = displayedCount.toLocaleString('tr-TR');
-      document.getElementById('kpi-raw-sub').textContent = state.harmonized ? `Ham Kayıt: ${totalRaw.toLocaleString('tr-TR')}` : 'Filtrelendi';
-      document.getElementById('kpi-anomaly').textContent = displayedCount > 0 ? (state.harmonized ? '+0.85' : '+2.40') : '0.0';
+      document.getElementById('kpi-count').textContent = filtered.length.toLocaleString('tr-TR');
       document.getElementById('kpi-frp').textContent = filtered.length ? (totalFrp / filtered.length).toFixed(1) : '0.0';
-      
-      const peakMonthIdx = monthTotals.indexOf(Math.max(...monthTotals));
-      document.getElementById('kpi-peak').textContent = displayedCount > 0 ? MONTHS_TR[peakMonthIdx] : '-';
       document.getElementById('timeline-label').textContent = state.selectedYear === 0 ? 'Tüm Yıllar' : `${state.selectedYear} Seçili`;
 
       if(state.availableYears.length === 0) return;
@@ -349,7 +435,7 @@
       const heatmapData = [];
       state.availableYears.forEach((yr, yIdx) => {
         for (let m = 1; m <= 12; m++) {
-          const val = filtered.filter(h => h.year === yr && h.month === m).reduce((a, b) => a + (state.harmonized ? b.harmCount : b.rawCount), 0);
+          const val = filtered.filter(h => h.year === yr && h.month === m).length;
           heatmapData.push([m - 1, yIdx, val]);
         }
       });
@@ -362,22 +448,23 @@
         series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#1C1C1E', borderWidth: 1, borderRadius: 2 } }]
       });
 
-      const yearlyHarm = state.availableYears.map(yr => filtered.filter(h => h.year === yr).reduce((s, x) => s + x.harmCount, 0));
-      const yearlyRaw = state.availableYears.map(yr => filtered.filter(h => h.year === yr).reduce((s, x) => s + x.rawCount, 0));
+      const yearlyCounts = state.availableYears.map(yr => filtered.filter(h => h.year === yr).length);
 
       timeseriesChart.setOption({
         grid: { top: 10, bottom: 20, left: 40, right: 0 },
         xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        series: [
-          { name: 'Ham', type: 'line', data: yearlyRaw, smooth: true, symbol: 'none', lineStyle: { color: '#FF3B30', width: state.harmonized ? 1 : 2, type: state.harmonized ? 'dashed' : 'solid' } },
-          { name: 'Uyumlu', type: 'line', data: yearlyHarm, smooth: true, symbol: 'none', lineStyle: { color: '#FF9500', width: 3 }, areaStyle: { color: 'rgba(255, 149, 0, 0.1)' } }
-        ]
+        series: [{ type: 'line', data: yearlyCounts, smooth: true, symbol: 'none', lineStyle: { color: '#FF9500', width: 3 }, areaStyle: { color: 'rgba(255, 149, 0, 0.1)' } }]
       });
     }
 
-    function onYearSliderInput(val) { state.selectedYear = parseInt(val) === 2000 ? 0 : parseInt(val); refreshAll(); }
-    function resetCalendarSelection() { state.selectedYear = 0; document.getElementById('year-slider').value = 2000; refreshAll(); }
+    function onYearSliderInput(val) { 
+      let parsed = parseInt(val);
+      if(state.availableYears.length > 0 && parsed === state.availableYears[0]) parsed = 0; // ilk yıla çekilirse 'Tümü' olsun (isteğe bağlı davranış, ancak genel slider mantığı böyledir).
+      // Daha tutarlı olması için: Sadece tam yıla odaklansın. 'Tümü' için senaryo butonları var.
+      state.selectedYear = parsed; 
+      refreshAll(); 
+    }
     
     function togglePlayTimeline() {
       if(state.availableYears.length === 0) return;
@@ -397,670 +484,11 @@
 
     function startAOIDraw() { drawingAOI = true; document.getElementById('aoi-banner').classList.remove('hidden'); }
     function cancelAOIDraw() { drawingAOI = false; aoiStartLatLng = null; document.getElementById('aoi-banner').classList.add('hidden'); }
-    function clearAOI() { map.removeLayer(aoiRectLayer); aoiRectLayer = null; state.aoiBounds = null; document.getElementById('clear-aoi-btn').classList.add('hidden'); document.getElementById('active-region-label').textContent = 'Tüm Türkiye'; refreshAll(); }
-
-    function exportFilteredCSV() {
-      const rows = getFilteredHotspots();
-      let csv = 'year,month,lat,lon,sensor,time_pass,confidence,val,frp_mw\n';
-      rows.forEach(r => { csv += `${r.year},${r.month},${r.lat},${r.lon},${r.sensor},${r.timePass},${r.confidence},${state.harmonized?r.harmCount:r.rawCount},${r.frp}\n`; });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ignis_veri_${state.selectedYear || 'tumu'}.csv`; a.click();
-    }
+    function clearAOI() { map.removeLayer(aoiRectLayer); aoiRectLayer = null; state.aoiBounds = null; document.getElementById('clear-aoi-btn').classList.add('hidden'); refreshAll(); }
 
     function refreshAll() { renderMapHotspots(); updateChartsAndKPIs(); }
 
-    // BAŞLAT
     window.addEventListener('DOMContentLoaded', () => { fetchAllGitHubData(); });
-  </script>
-
-  <!-- Leaflet & ECharts -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-
-  <style>
-    * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
-    body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
-
-    /* Apple-style Frosted Glass */
-    .ios-panel {
-      background: rgba(28, 28, 30, 0.75);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      border-radius: 20px;
-    }
-
-    /* Map Base */
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #1C1C1E; }
-    .leaflet-control-attribution { display: none !important; }
-
-    /* iOS Segmented Controls */
-    .segmented-control {
-      background: rgba(118, 118, 128, 0.24);
-      padding: 2px;
-      border-radius: 8px;
-      display: flex;
-    }
-    .segmented-btn {
-      flex: 1; text-align: center; padding: 4px 8px; border-radius: 6px;
-      font-size: 11px; font-weight: 500; color: #EBEBF5;
-      transition: all 0.2s ease; cursor: pointer;
-    }
-    .segmented-btn.active {
-      background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    }
-
-    /* iOS Toggle */
-    .ios-toggle {
-      width: 44px; height: 24px; border-radius: 24px;
-      background: #39393D; position: relative; cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    .ios-toggle.active { background: #32D74B; }
-    .ios-toggle-knob {
-      width: 20px; height: 20px; background: white; border-radius: 50%;
-      position: absolute; top: 2px; left: 2px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2);
-    }
-    .ios-toggle.active .ios-toggle-knob { transform: translateX(20px); }
-
-    /* Range Slider */
-    input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
-    input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.2); }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
-      background: white; border: 1px solid #d1d1d6; margin-top: -6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-    
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-  </style>
-</head>
-
-<body class="relative w-screen h-screen overflow-hidden antialiased text-sm">
-
-  <div id="map"></div>
-
-  <!-- AOI Info Banner -->
-  <div id="aoi-banner" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-30 ios-panel px-4 py-2 text-xs flex items-center gap-3">
-    <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
-    <span>Haritada bir alan çizmek için tıklayın ve sürükleyin.</span>
-    <button onclick="cancelAOIDraw()" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
-  </div>
-
-  <!-- SOL PANEL: KONTROL MERKEZİ -->
-  <aside class="fixed top-6 left-6 bottom-6 w-[340px] z-20 flex flex-col gap-4 pointer-events-auto">
-    
-    <!-- Başlık & Genel Kontroller -->
-    <div class="ios-panel p-5 flex flex-col gap-4">
-      <div class="flex items-center justify-between mb-1">
-        <div>
-          <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
-          <p class="text-[11px] text-gray-400 font-medium mt-0.5">FIRMS Gelişmiş Veri Motoru</p>
-        </div>
-        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-apple-orange to-apple-red flex items-center justify-center shadow-lg">
-          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2c1.5 3.5 4.5 5.5 4.5 9.5 0 2.5-1.8 4.5-4.5 4.5s-4.5-2-4.5-4.5C7.5 9.5 9 7 12 2zm0 18c-4.4 0-8-3.2-8-7.5 0-2.3 1.1-4.5 2.9-6-.2 1.2.2 2.4 1.1 3.2-.6 1.2-.5 2.7.4 3.8 1.2 1.5 3.4 1.7 4.9.5.9-.7 1.4-1.8 1.4-2.9 0-1.4-.6-2.7-1.6-3.6 3.9 1.6 6.9 5.1 6.9 9.5 0 1.7-3.6 3-8 3z"/></svg>
-        </div>
-      </div>
-
-      <!-- Senaryolar -->
-      <div class="flex flex-col gap-1.5">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Senaryo Seçimi</label>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition">Tüm Alan</button>
-          <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz/Ege</button>
-          <button onclick="selectScenario('cukurova')" id="scen-cukurova" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Güney/Doğu</button>
-          <button onclick="selectScenario('viirs2012')" id="scen-viirs2012" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Merkez/Kuzey</button>
-        </div>
-      </div>
-
-      <!-- NASA FIRMS Filtreleri -->
-      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Uydu Geçişi (Day/Night)</label>
-        <div class="segmented-control">
-          <div onclick="setFilter('timePass', 'all')" id="f-time-all" class="segmented-btn active">Tümü</div>
-          <div onclick="setFilter('timePass', 'day')" id="f-time-day" class="segmented-btn">☀️ Gündüz</div>
-          <div onclick="setFilter('timePass', 'night')" id="f-time-night" class="segmented-btn">🌙 Gece</div>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <div class="flex justify-between items-center">
-          <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Güvenilirlik (Confidence)</label>
-          <span class="text-[9px] text-gray-500">Yanlış alarmı azaltır</span>
-        </div>
-        <div class="segmented-control">
-          <div onclick="setFilter('confidence', 'all')" id="f-conf-all" class="segmented-btn active">Tümü (Normal+Yüksek)</div>
-          <div onclick="setFilter('confidence', 'high')" id="f-conf-high" class="segmented-btn text-apple-orange">Sadece Yüksek %</div>
-        </div>
-      </div>
-
-      <!-- Harita Katmanları -->
-      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Harita Katmanları</label>
-        
-        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5 mb-1">
-          <span class="text-xs text-gray-300 flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-[#4A3C31] border border-[#FF5500]/50 rounded-sm"></span> Yanan Alanlar (Burned Area)</span>
-          <div id="burned-toggle" onclick="toggleBurnedArea()" class="ios-toggle">
-            <div class="ios-toggle-knob"></div>
-          </div>
-        </div>
-
-        <div class="segmented-control">
-          <div onclick="setMapDisplayMode('h3')" id="mode-h3" class="segmented-btn active">Isı Yoğunluğu</div>
-          <div onclick="setMapDisplayMode('sensor')" id="mode-sensor" class="segmented-btn">Sensör İzleri</div>
-          <div onclick="setMapDisplayMode('anomaly')" id="mode-anomaly" class="segmented-btn">Anomali Skoru</div>
-        </div>
-      </div>
-
-      <!-- Araçlar -->
-      <div class="flex gap-2 pt-1">
-        <button onclick="startAOIDraw()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5">
-          <span class="text-apple-blue text-sm">⛶</span> Alan Çiz
-        </button>
-        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden bg-apple-red/20 text-apple-red text-xs px-3 rounded-lg border border-apple-red/30 hover:bg-apple-red/30">✕</button>
-        <button onclick="exportFilteredCSV()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5">
-          <span class="text-apple-green text-sm">↓</span> CSV İndir
-        </button>
-      </div>
-    </div>
-
-    <!-- KPI Grid -->
-    <div class="ios-panel p-4 grid grid-cols-2 gap-3 flex-1">
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
-        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-          <span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span> AKTİF NOKTA
-        </div>
-        <div id="kpi-count" class="text-2xl font-semibold text-white tracking-tight mt-1">Yükleniyor..</div>
-        <div id="kpi-raw-sub" class="text-[9px] text-gray-500 mt-0.5">Filtrelenmiş Veri</div>
-      </div>
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
-        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-          <span class="w-1.5 h-1.5 rounded-full bg-apple-red"></span> ANOMALİ (Z)
-        </div>
-        <div id="kpi-anomaly" class="text-2xl font-semibold text-white tracking-tight mt-1">+0.0</div>
-        <div id="kpi-anomaly-sub" class="text-[9px] text-gray-500 mt-0.5">Tarihsel Ortalamaya Göre</div>
-      </div>
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
-        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-          <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span> ORT. ENERJİ
-        </div>
-        <div id="kpi-frp" class="text-2xl font-semibold text-white tracking-tight mt-1">0.0</div>
-        <div class="text-[9px] text-gray-500 mt-0.5">Megawatt (MW)</div>
-      </div>
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
-        <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-          <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> ZİRVE AY
-        </div>
-        <div id="kpi-peak" class="text-2xl font-semibold text-white tracking-tight mt-1 uppercase">-</div>
-        <div id="kpi-peak-sub" class="text-[9px] text-gray-500 mt-0.5">En Yoğun Dönem</div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- SAĞ PANEL: GRAFİKLER & KALİBRASYON -->
-  <aside class="fixed top-6 right-6 bottom-6 w-[400px] z-20 flex flex-col gap-4 pointer-events-auto">
-    
-    <!-- Kalibrasyon Motoru -->
-    <div class="ios-panel p-5">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-base font-semibold text-white">Sensör Uyumlaştırma</h2>
-          <p id="r2-score" class="text-[11px] text-apple-green mt-0.5">Aktif (R² = 0.948)</p>
-        </div>
-        <div id="harm-toggle" onclick="toggleHarmonization()" class="ios-toggle active">
-          <div class="ios-toggle-knob"></div>
-        </div>
-      </div>
-      
-      <div class="segmented-control mb-3">
-        <div onclick="setCalibMethod('quantile')" id="m-quantile" class="segmented-btn active">Kantil (CDF)</div>
-        <div onclick="setCalibMethod('ratio')" id="m-ratio" class="segmented-btn">H3 Oran</div>
-        <div onclick="setCalibMethod('frp')" id="m-frp" class="segmented-btn">FRP Enerji</div>
-      </div>
-      <p id="harm-desc" class="text-[10px] text-gray-400 leading-relaxed">
-        VIIRS aşırı örneklemeleri, H3 mekansal hücreleme ile MODIS referans serisine kalibre edilmiştir.
-      </p>
-    </div>
-
-    <!-- Aktivite Takvimi -->
-    <div class="ios-panel p-5 flex flex-col flex-1 min-h-0">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-white">Aylık & Yıllık Matris</h3>
-        <button onclick="resetCalendarSelection()" class="text-[10px] bg-apple-gray2 px-2 py-1 rounded-md text-gray-400 hover:text-white transition">Sıfırla</button>
-      </div>
-      <div id="calendar-chart" class="w-full flex-1"></div>
-    </div>
-
-    <!-- Zaman Serisi -->
-    <div class="ios-panel p-5 flex flex-col h-[220px] shrink-0">
-      <h3 class="text-sm font-semibold text-white mb-2">Zaman Serisi (Trend)</h3>
-      <div id="timeseries-chart" class="w-full flex-1"></div>
-    </div>
-  </aside>
-
-  <!-- ALT DOCK: ZAMAN ÇUBUĞU -->
-  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[540px] z-20 ios-panel p-3 px-5 flex flex-col gap-2 pointer-events-auto">
-    <div class="flex justify-between items-end">
-      <button id="play-btn" onclick="togglePlayTimeline()" class="text-xl text-white hover:text-gray-300 transition w-8">▶</button>
-      <div class="text-center flex-1">
-        <span id="timeline-label" class="text-sm font-semibold text-white">Tüm Yıllar</span>
-        <div id="active-region-label" class="text-[10px] text-gray-400 mt-0.5">Seçili Bölge</div>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="setBaseMap('dark')" id="bm-dark" class="text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition">Koyu</button>
-        <button onclick="setBaseMap('sat')" id="bm-sat" class="text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition">Uydu</button>
-      </div>
-    </div>
-    
-    <div class="flex items-center gap-3 mt-1">
-      <span class="text-[10px] font-medium text-gray-400">Geçmiş</span>
-      <input id="year-slider" type="range" min="2000" max="2026" value="2000" oninput="onYearSliderInput(this.value)" class="flex-1" />
-      <span class="text-[10px] font-medium text-gray-400">Güncel</span>
-    </div>
-  </footer>
-
-  <!-- ========================================== -->
-  <!-- JAVASCRIPT & GITHUB VERİ ÇEKME İŞLEMLERİ   -->
-  <!-- ========================================== -->
-  <script>
-    // ---------------------------------------------------------
-    // 1. GITHUB DOSYA BİLGİSİ (BURAYI DEĞİŞTİRMELİSİNİZ)
-    // ---------------------------------------------------------
-    // 'DOSYA_ADINIZ.csv' veya 'DOSYA_ADINIZ.json' kısmını public/data içindeki tam adıyla değiştirin.
-    const GITHUB_DATA_URL = 'https://github.com/Albay05/sistem_odevleri/tree/main/public/data';
-
-    // 2. STATE & DATA 
-    const state = {
-      harmonized: true, calibMethod: 'quantile', mapMode: 'h3',
-      scenario: 'all', selectedYear: 0, selectedMonth: 0,
-      timePass: 'all', // 'all', 'day', 'night'
-      confidence: 'all', // 'all', 'high'
-      showBurnedArea: false,
-      colorRamp: 'YlOrRd', aoiBounds: null, playing: false, playTimer: null,
-      availableYears: [] 
-    };
-
-    const MONTHS_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    const COLOR_RAMPS = { YlOrRd: ['#ffefa8', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'] };
-    const hotspotsData = [];
-
-    // --- CSV PARSER (Dosyanız CSV ise güvenli dönüştürme için) ---
-    function parseCSV(csvText) {
-      const lines = csvText.trim().split('\n');
-      if(lines.length < 2) return [];
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const data = [];
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(',');
-        if (row.length >= headers.length) {
-          const obj = {};
-          headers.forEach((h, idx) => { obj[h] = row[idx].trim(); });
-          data.push(obj);
-        }
-      }
-      return data;
-    }
-
-    // --- GITHUB'DAN VERİ ÇEK (FETCH) ---
-    async function fetchGitHubData() {
-      try {
-        document.getElementById('kpi-count').textContent = 'İndiriliyor...';
-        
-        const response = await fetch(GITHUB_DATA_URL);
-        if (!response.ok) throw new Error(`Ağ hatası: ${response.status}`);
-        
-        const textData = await response.text();
-        let rawData = [];
-
-        // Dosya uzantısına göre parse et
-        if (GITHUB_DATA_URL.toLowerCase().endsWith('.json')) {
-          rawData = JSON.parse(textData);
-        } else {
-          rawData = parseCSV(textData);
-        }
-
-        hotspotsData.length = 0;
-        const yearSet = new Set();
-
-        // ---------------------------------------------------------
-        // 3. SÜTUN EŞLEŞTİRME (MAPPING)
-        // NASA FIRMS (MODIS/VIIRS) veya kendi verinize uyum sağlar
-        // ---------------------------------------------------------
-        rawData.forEach(item => {
-          // Tarih çözümleme (NASA formatı genelde acq_date: YYYY-MM-DD)
-          const dateStr = item.acq_date || item.date || item.tarih || '';
-          let yr = 2023, mo = 1;
-          if (dateStr.length >= 7) {
-            yr = parseInt(dateStr.substring(0,4));
-            mo = parseInt(dateStr.substring(5,7));
-          } else {
-            yr = parseInt(item.year || item.yil || 2023);
-            mo = parseInt(item.month || item.ay || 7);
-          }
-          
-          yearSet.add(yr);
-
-          // Güvenilirlik Çözümleme (MODIS 0-100%, VIIRS h/n/l)
-          const conf = String(item.confidence || 'nominal').toLowerCase();
-          const isHighConf = (conf === 'h' || conf === 'high' || parseInt(conf) >= 80);
-
-          // Gece/Gündüz Çözümleme
-          const dN = String(item.daynight || item.day_night || 'D').toUpperCase();
-          const isNight = (dN === 'N' || dN === 'NIGHT');
-
-          const lat = parseFloat(item.latitude || item.lat || item.enlem || 0);
-          const lon = parseFloat(item.longitude || item.lon || item.boylam || 0);
-
-          if(lat !== 0 && lon !== 0) {
-            hotspotsData.push({
-              year: yr, month: mo,
-              lat: lat, lon: lon,
-              sensor: (item.instrument || item.sensor || item.satellite || 'BİLİNMİYOR').toUpperCase(),
-              timePass: isNight ? 'night' : 'day',
-              confidence: isHighConf ? 'high' : 'nominal',
-              rawCount: parseInt(item.raw_count || item.count || 1),
-              harmCount: parseInt(item.harmonized_count || item.uyum_sayisi || 1), 
-              frp: parseFloat(item.frp || item.power || 0.0),
-              anomalyZ: parseFloat(item.anomaly_z || item.anomali || 0.0)
-            });
-          }
-        });
-
-        // Yıl aralığını belirle
-        state.availableYears = Array.from(yearSet).sort();
-        if(state.availableYears.length > 0) {
-          document.getElementById('year-slider').min = 2000; 
-          document.getElementById('year-slider').max = state.availableYears[state.availableYears.length-1];
-        }
-
-        // Veri geldi, arayüzü çiz
-        initMap();
-        initCharts();
-        refreshAll();
-
-      } catch (error) {
-        console.error("Veri çekme hatası:", error);
-        document.getElementById('kpi-count').textContent = 'HATA';
-        document.getElementById('kpi-raw-sub').textContent = 'GitHub Verisi Okunamadı';
-        alert("Veriler GitHub'dan çekilemedi. GITHUB_DATA_URL kısmındaki dosya adının doğru olduğundan ve verinin public (açık) olduğundan emin olun.");
-      }
-    }
-
-
-    // 4. MAP SETUP
-    let map, baseTileLayer, hotspotLayerGroup, burnedLayerGroup, aoiRectLayer = null, drawingAOI = false, aoiStartLatLng = null;
-
-    function initMap() {
-      if(map) map.remove(); // Var olan haritayı temizle (tekrar yüklenirse diye)
-      
-      map = L.map('map', { center: [38.9, 35.2], zoom: 6, zoomControl: false, preferCanvas: true });
-      burnedLayerGroup = L.layerGroup().addTo(map); 
-      hotspotLayerGroup = L.layerGroup().addTo(map); 
-
-      setBaseMap('dark');
-
-      map.on('click', (e) => {
-        if (!drawingAOI) return;
-        if (!aoiStartLatLng) aoiStartLatLng = e.latlng;
-        else {
-          const bounds = L.latLngBounds(aoiStartLatLng, e.latlng);
-          if (aoiRectLayer) map.removeLayer(aoiRectLayer);
-          aoiRectLayer = L.rectangle(bounds, { color: '#0A84FF', weight: 2, fillColor: '#0A84FF', fillOpacity: 0.15 }).addTo(map);
-          state.aoiBounds = bounds;
-          drawingAOI = false; aoiStartLatLng = null;
-          document.getElementById('aoi-banner').classList.add('hidden');
-          document.getElementById('clear-aoi-btn').classList.remove('hidden');
-          document.getElementById('active-region-label').textContent = 'Özel Seçili Alan';
-          refreshAll();
-        }
-      });
-    }
-
-    function setBaseMap(type) {
-      if (baseTileLayer) map.removeLayer(baseTileLayer);
-      const darkUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-      const satUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      baseTileLayer = L.tileLayer(type === 'dark' ? darkUrl : satUrl, { maxZoom: 18 }).addTo(map);
-      
-      document.getElementById('bm-dark').className = type === 'dark' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
-      document.getElementById('bm-sat').className = type === 'sat' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
-    }
-
-    // 5. UI CONTROLS & FILTERS
-    function updateSegmentedControl(groupId, activeId) {
-      const items = { 'timePass': ['f-time-all', 'f-time-day', 'f-time-night'], 'confidence': ['f-conf-all', 'f-conf-high'] };
-      if (items[groupId]) {
-        items[groupId].forEach(id => {
-          const el = document.getElementById(id);
-          if (id === activeId) el.classList.add('active'); else el.classList.remove('active');
-        });
-      } else {
-        ['h3', 'sensor', 'anomaly', 'quantile', 'ratio', 'frp'].forEach(id => {
-          const el = document.getElementById(`mode-${id}`) || document.getElementById(`m-${id}`);
-          if(el && (id === activeId || el.parentElement.id === groupId)) {
-              if(id === activeId) el.classList.add('active');
-              else if(el.parentElement.contains(document.getElementById(activeId))) el.classList.remove('active');
-          }
-        });
-      }
-    }
-
-    function setFilter(type, value) {
-      state[type] = value;
-      updateSegmentedControl(type, type === 'timePass' ? `f-time-${value}` : `f-conf-${value}`);
-      refreshAll();
-    }
-
-    function toggleBurnedArea() {
-      state.showBurnedArea = !state.showBurnedArea;
-      const toggle = document.getElementById('burned-toggle');
-      if (state.showBurnedArea) toggle.classList.add('active'); else toggle.classList.remove('active');
-      renderMapHotspots(); 
-    }
-
-    function toggleHarmonization() {
-      state.harmonized = !state.harmonized;
-      const toggle = document.getElementById('harm-toggle');
-      const desc = document.getElementById('harm-desc');
-      const r2 = document.getElementById('r2-score');
-      
-      if (state.harmonized) {
-        toggle.classList.add('active');
-        r2.textContent = 'Aktif'; r2.className = 'text-[11px] text-apple-green mt-0.5';
-        desc.textContent = 'Veriler kalibrasyon mekanizmasından geçirilmiş haliyle gösteriliyor.';
-      } else {
-        toggle.classList.remove('active');
-        r2.textContent = 'Kapalı (Ham Veri)'; r2.className = 'text-[11px] text-apple-red mt-0.5';
-        desc.textContent = 'Uyarı: Kalibrasyon devre dışı. NASA sensörlerinin orijinal saf verilerini görüyorsunuz.';
-      }
-      refreshAll();
-    }
-
-    function setCalibMethod(method) { state.calibMethod = method; updateSegmentedControl(null, method); refreshAll(); }
-    function setMapDisplayMode(mode) { state.mapMode = mode; updateSegmentedControl(null, mode); renderMapHotspots(); }
-
-    function selectScenario(scen) {
-      state.scenario = scen;
-      ['all', 'mugla2021', 'cukurova', 'viirs2012'].forEach(s => {
-        const btn = document.getElementById('scen-' + s);
-        btn.className = (s === scen) ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition' : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
-      });
-
-      if (scen === 'all') { state.selectedYear = 0; map.flyTo([38.9, 35.2], 6); document.getElementById('active-region-label').textContent = 'Tüm Türkiye'; }
-      else if (scen === 'mugla2021') { state.selectedYear = 2021; map.flyTo([36.85, 29.5], 8); document.getElementById('active-region-label').textContent = 'Akdeniz/Ege'; }
-      else if (scen === 'cukurova') { state.selectedYear = 0; map.flyTo([37.2, 37.5], 7); document.getElementById('active-region-label').textContent = 'Güney/Doğu'; }
-      else if (scen === 'viirs2012') { state.selectedYear = 0; map.flyTo([39.9, 32.8], 6); document.getElementById('active-region-label').textContent = 'İç Anadolu/Kuzey'; }
-      
-      document.getElementById('year-slider').value = state.selectedYear || 2000;
-      refreshAll();
-    }
-
-    // 6. RENDERING & CHARTS
-    function getFilteredHotspots() {
-      return hotspotsData.filter(h => {
-        if (state.selectedYear > 0 && h.year !== state.selectedYear) return false;
-        
-        // Coğrafi Filtreler (Çok Basitleştirilmiş Bounding Boxlar)
-        if (state.scenario === 'mugla2021' && (h.lat > 38.5 || h.lon > 32.0)) return false; 
-        if (state.scenario === 'cukurova' && (h.lat > 38.0 || h.lon < 34.0)) return false; 
-        if (state.scenario === 'viirs2012' && (h.lat < 38.5 || h.lon < 31.0)) return false; 
-        
-        if (state.aoiBounds && !state.aoiBounds.contains([h.lat, h.lon])) return false;
-        if (state.timePass !== 'all' && h.timePass !== state.timePass) return false;
-        if (state.confidence === 'high' && h.confidence !== 'high') return false;
-        
-        return true;
-      });
-    }
-
-    function renderMapHotspots() {
-      hotspotLayerGroup.clearLayers();
-      burnedLayerGroup.clearLayers();
-      
-      const filtered = getFilteredHotspots();
-      const ramp = COLOR_RAMPS['YlOrRd'];
-
-      if (state.showBurnedArea) {
-        // Enlem/Boylama göre kaba bir grid içinde toplayıp poligon/büyük daire çizimi
-        const grid = {};
-        filtered.forEach(d => {
-          const k = `${Math.round(d.lat*5)},${Math.round(d.lon*5)}`; // Kaba Grid
-          if(!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0 };
-          grid[k].count += (state.harmonized ? d.harmCount : d.rawCount);
-        });
-
-        Object.values(grid).forEach(c => {
-          if (c.count > 10) {
-            L.circle([c.lat, c.lon], {
-              radius: Math.sqrt(c.count) * 120, 
-              color: '#FF5500', weight: 1, fillColor: '#2C1B10', fillOpacity: 0.65
-            }).addTo(burnedLayerGroup);
-          }
-        });
-      }
-
-      filtered.forEach(d => {
-        const val = state.harmonized ? d.harmCount : d.rawCount;
-        const ratio = Math.min(1, val / (state.harmonized ? 40 : 100));
-        let color = ramp[Math.floor(ratio * (ramp.length - 1))];
-        let radius = Math.max(3, Math.min(12, 3 + Math.sqrt(val) * 1.0));
-
-        if (state.mapMode === 'sensor') { 
-          color = (d.sensor.includes('MOD') || d.sensor.includes('AQUA') || d.sensor.includes('TERRA')) ? '#0A84FF' : '#FF3B30'; 
-          radius = color === '#0A84FF' ? 6 : 4; 
-        }
-        else if (state.mapMode === 'anomaly') { 
-          color = d.anomalyZ > 2.0 ? '#FF3B30' : (d.anomalyZ > 0.8 ? '#FF9500' : '#32D74B'); 
-        }
-
-        L.circleMarker([d.lat, d.lon], { radius, color: color, weight: 1, fillColor: color, fillOpacity: 0.75 }).addTo(hotspotLayerGroup);
-      });
-    }
-
-    let calendarChart, timeseriesChart;
-    function initCharts() {
-      if(calendarChart) calendarChart.dispose();
-      if(timeseriesChart) timeseriesChart.dispose();
-
-      calendarChart = echarts.init(document.getElementById('calendar-chart'));
-      timeseriesChart = echarts.init(document.getElementById('timeseries-chart'));
-      window.addEventListener('resize', () => { calendarChart.resize(); timeseriesChart.resize(); });
-    }
-
-    function updateChartsAndKPIs() {
-      const filtered = getFilteredHotspots();
-      let totalHarm = 0, totalRaw = 0, totalFrp = 0;
-      const monthTotals = new Array(12).fill(0);
-
-      filtered.forEach(h => { 
-        totalHarm += h.harmCount; totalRaw += h.rawCount; totalFrp += h.frp; 
-        monthTotals[h.month - 1] += (state.harmonized ? h.harmCount : h.rawCount); 
-      });
-      
-      const displayedCount = state.harmonized ? totalHarm : totalRaw;
-      document.getElementById('kpi-count').textContent = displayedCount.toLocaleString('tr-TR');
-      document.getElementById('kpi-raw-sub').textContent = state.harmonized ? `Ham Kayıt: ${totalRaw.toLocaleString('tr-TR')}` : 'Ham Veri Filtrelendi';
-      document.getElementById('kpi-anomaly').textContent = displayedCount > 0 ? (state.harmonized ? '+0.85' : '+2.40') : '0.0';
-      document.getElementById('kpi-frp').textContent = filtered.length ? (totalFrp / filtered.length).toFixed(1) : '0.0';
-      
-      const peakMonthIdx = monthTotals.indexOf(Math.max(...monthTotals));
-      document.getElementById('kpi-peak').textContent = displayedCount > 0 ? MONTHS_TR[peakMonthIdx] : '-';
-
-      document.getElementById('timeline-label').textContent = state.selectedYear === 0 ? 'Tüm Yıllar' : `${state.selectedYear} Yılı Seçili`;
-
-      // Charts Logic
-      if(state.availableYears.length === 0) return;
-
-      const heatmapData = [];
-      state.availableYears.forEach((yr, yIdx) => {
-        for (let m = 1; m <= 12; m++) {
-          const val = filtered.filter(h => h.year === yr && h.month === m).reduce((a, b) => a + (state.harmonized ? b.harmCount : b.rawCount), 0);
-          heatmapData.push([m - 1, yIdx, val]);
-        }
-      });
-
-      calendarChart.setOption({
-        grid: { top: 0, bottom: 20, left: 35, right: 0 },
-        xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        yAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        visualMap: { show: false, min: 0, max: 50, inRange: { color: COLOR_RAMPS['YlOrRd'] } },
-        series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#1C1C1E', borderWidth: 1, borderRadius: 2 } }]
-      });
-
-      const yearlyHarm = state.availableYears.map(yr => filtered.filter(h => h.year === yr).reduce((s, x) => s + x.harmCount, 0));
-      const yearlyRaw = state.availableYears.map(yr => filtered.filter(h => h.year === yr).reduce((s, x) => s + x.rawCount, 0));
-
-      timeseriesChart.setOption({
-        grid: { top: 10, bottom: 20, left: 40, right: 0 },
-        xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        series: [
-          { name: 'Ham', type: 'line', data: yearlyRaw, smooth: true, symbol: 'none', lineStyle: { color: '#FF3B30', width: state.harmonized ? 1 : 2, type: state.harmonized ? 'dashed' : 'solid' } },
-          { name: 'Uyumlu', type: 'line', data: yearlyHarm, smooth: true, symbol: 'none', lineStyle: { color: '#FF9500', width: 3 }, areaStyle: { color: 'rgba(255, 149, 0, 0.1)' } }
-        ]
-      });
-    }
-
-    function onYearSliderInput(val) { state.selectedYear = parseInt(val) === 2000 ? 0 : parseInt(val); refreshAll(); }
-    function resetCalendarSelection() { state.selectedYear = 0; document.getElementById('year-slider').value = 2000; refreshAll(); }
-    
-    function togglePlayTimeline() {
-      if(state.availableYears.length === 0) return;
-      state.playing = !state.playing;
-      document.getElementById('play-btn').textContent = state.playing ? '⏸' : '▶';
-      if (state.playing) {
-        if (state.selectedYear === 0) state.selectedYear = state.availableYears[0];
-        state.playTimer = setInterval(() => {
-          let currIdx = state.availableYears.indexOf(state.selectedYear);
-          if (currIdx >= state.availableYears.length - 1) state.selectedYear = state.availableYears[0];
-          else state.selectedYear = state.availableYears[currIdx + 1];
-          document.getElementById('year-slider').value = state.selectedYear;
-          refreshAll();
-        }, 1000);
-      } else clearInterval(state.playTimer);
-    }
-
-    function startAOIDraw() { drawingAOI = true; document.getElementById('aoi-banner').classList.remove('hidden'); }
-    function cancelAOIDraw() { drawingAOI = false; aoiStartLatLng = null; document.getElementById('aoi-banner').classList.add('hidden'); }
-    function clearAOI() { map.removeLayer(aoiRectLayer); aoiRectLayer = null; state.aoiBounds = null; document.getElementById('clear-aoi-btn').classList.add('hidden'); document.getElementById('active-region-label').textContent = 'Tüm Türkiye'; refreshAll(); }
-
-    function exportFilteredCSV() {
-      const rows = getFilteredHotspots();
-      let csv = 'year,month,lat,lon,sensor,time_pass,confidence,val,frp_mw\n';
-      rows.forEach(r => { csv += `${r.year},${r.month},${r.lat},${r.lon},${r.sensor},${r.timePass},${r.confidence},${state.harmonized?r.harmCount:r.rawCount},${r.frp}\n`; });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ignis_veri_${state.selectedYear || 'tumu'}.csv`; a.click();
-    }
-
-    function refreshAll() { renderMapHotspots(); updateChartsAndKPIs(); }
-
-    window.addEventListener('DOMContentLoaded', () => { fetchGitHubData(); });
   </script>
 </body>
 </html>
