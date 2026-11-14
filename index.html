@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IGNIS // MODIS & VIIRS Komuta Merkezi (Vector/WebGL)</title>
+  <title>IGNIS // MODIS & VIIRS 3B Komuta Merkezi (WebGL)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,9 +24,9 @@
     }
   </script>
 
-  <!-- MapLibre GL JS (WebGL / GPU Vektör Mimari) -->
-  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <!-- MapLibre GL JS v4.7.1 (3D Terrain, 3D Extrusion & Globe Destekli) -->
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   
   <!-- Apache ECharts -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -34,26 +34,26 @@
   <style>
     * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
     body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
-    .ios-panel { background: rgba(28, 28, 30, 0.76); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); border-radius: 20px; }
+    .ios-panel { background: rgba(28, 28, 30, 0.78); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); border-radius: 20px; }
     
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #090A0F; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #050608; }
     .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { display: none !important; }
 
     /* Apple Style MapLibre Popup */
     .maplibregl-popup-content {
-      background: rgba(28, 28, 30, 0.88) !important;
+      background: rgba(24, 24, 26, 0.92) !important;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 14px !important;
       padding: 12px 14px !important;
       color: #F5F5F7 !important;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65) !important;
-      min-width: 210px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important;
+      min-width: 215px;
     }
     .maplibregl-popup-tip {
-      border-top-color: rgba(28, 28, 30, 0.88) !important;
-      border-bottom-color: rgba(28, 28, 30, 0.88) !important;
+      border-top-color: rgba(24, 24, 26, 0.92) !important;
+      border-bottom-color: rgba(24, 24, 26, 0.92) !important;
     }
     .maplibregl-popup-close-button {
       color: #9CA3AF !important;
@@ -65,7 +65,7 @@
 
     .segmented-control { background: rgba(118, 118, 128, 0.24); padding: 2px; border-radius: 8px; display: flex; }
     .segmented-btn { flex: 1; text-align: center; padding: 4px 6px; border-radius: 6px; font-size: 11px; font-weight: 500; color: #EBEBF5; transition: all 0.2s ease; cursor: pointer; }
-    .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
 
     .month-pill { padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 500; color: #9CA3AF; cursor: pointer; transition: all 0.15s ease; }
     .month-pill:hover { color: #FFF; background: rgba(255,255,255,0.08); }
@@ -101,19 +101,19 @@
   </div>
 
   <!-- SOL PANEL -->
-  <aside class="fixed top-6 left-6 bottom-6 w-[345px] z-20 flex flex-col gap-3 pointer-events-auto">
+  <aside class="fixed top-6 left-6 bottom-6 w-[350px] z-20 flex flex-col gap-3 pointer-events-auto">
     <div class="ios-panel p-4 flex flex-col gap-3.5 overflow-y-auto">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
-          <p class="text-[11px] text-gray-400 font-medium mt-0.5">MODIS & VIIRS Vektörel Motoru</p>
+          <p class="text-[11px] text-gray-400 font-medium mt-0.5">3B Arazi & Termal Vektör Motoru</p>
         </div>
-        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-medium">WebGL 2.0</span>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-apple-orange/20 text-apple-orange border border-apple-orange/30 font-semibold">3D WebGL</span>
       </div>
 
       <!-- Bölge Seçimi -->
       <div class="flex flex-col gap-1.5">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bölge Seçimi</label>
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bölge & Kamera Odaklama</label>
         <div class="grid grid-cols-2 gap-1.5 text-xs">
           <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/10 transition font-medium">Tüm Alan</button>
           <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz/Ege</button>
@@ -139,11 +139,11 @@
 
       <!-- Harita Katmanları -->
       <div class="flex flex-col gap-2 pt-2 border-t border-white/10">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Harita Katmanları</label>
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Görselleştirme & 3B Katmanlar</label>
         
         <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5">
           <span class="text-xs text-gray-300 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 bg-[#4A3C31] border border-[#FF5500] rounded-sm inline-block"></span>
+            <span class="w-2.5 h-2.5 bg-[#FF2A00]/40 border border-[#FF9500] rounded-sm inline-block"></span>
             Yanan Alanlar (Burned Area)
           </span>
           <div id="burned-toggle" onclick="toggleBurnedArea()" class="ios-toggle">
@@ -152,24 +152,25 @@
         </div>
 
         <div class="segmented-control">
-          <div onclick="setMapDisplayMode('h3')" id="mode-h3" class="segmented-btn active">Isı Yoğunluğu</div>
+          <div onclick="setMapDisplayMode('h3')" id="mode-h3" class="segmented-btn active">Isı (Termal)</div>
+          <div onclick="setMapDisplayMode('extrusion')" id="mode-extrusion" class="segmented-btn">3B Sütun</div>
           <div onclick="setMapDisplayMode('sensor')" id="mode-sensor" class="segmented-btn">Sensör İzleri</div>
         </div>
 
-        <!-- Dinamik Lejant -->
+        <!-- Dinamik Lejant (Yüksek Kontrastlı Termal) -->
         <div id="legend-heatmap" class="flex flex-col gap-1 pt-0.5">
-          <div class="flex justify-between text-[10px] text-gray-400">
-            <span>Düşük (5 MW)</span>
-            <span>Orta</span>
-            <span>Yüksek (150+ MW)</span>
+          <div class="flex justify-between text-[10px] text-gray-300">
+            <span>Düşük (Macenta)</span>
+            <span>Yüksek (Turuncu)</span>
+            <span>Akkor Merkez</span>
           </div>
-          <div class="h-1.5 w-full rounded-full" style="background: linear-gradient(90deg, rgba(254,217,118,0.4) 0%, #feb24c 35%, #fd8d3c 65%, #e31a1c 85%, #800026 100%);"></div>
+          <div class="h-2 w-full rounded-full border border-white/15" style="background: linear-gradient(90deg, #9900FF 0%, #FF0055 25%, #FF3B00 50%, #FFAA00 75%, #FFFF00 90%, #FFFFFF 100%);"></div>
         </div>
 
         <div id="legend-sensor" class="hidden flex items-center justify-around pt-0.5 text-[11px] text-gray-300">
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-blue inline-block"></span> MODIS (1km)</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-red inline-block"></span> VIIRS (375m)</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-orange inline-block"></span> Ortak</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#00E5FF] inline-block"></span> MODIS (1km)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#FF2A55] inline-block"></span> VIIRS (375m)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#FFE600] inline-block"></span> Ortak</span>
         </div>
       </div>
 
@@ -219,7 +220,7 @@
         </div>
       </div>
       <p id="harm-desc" class="text-[11px] text-gray-400 leading-relaxed">
-        VIIRS (375m) aşırı örneklemeleri filtrelenerek MODIS (1km) referans serisine uyumlaştırıldı. Haritadaki noktalara tıklayarak detayları inceleyebilirsiniz.
+        Sağ tık + sürükle ile 3B kamera açısını değiştirebilir, noktalara tıklayarak detayları inceleyebilirsiniz.
       </p>
     </div>
 
@@ -248,13 +249,23 @@
     </div>
   </aside>
 
-  <!-- ALT DOCK: YIL VE AY ZAMAN ÇUBUĞU -->
-  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[600px] z-20 ios-panel p-3.5 px-5 flex flex-col gap-2.5 pointer-events-auto">
-    <div class="flex justify-between items-center">
-      <button id="play-btn" onclick="togglePlayTimeline()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition">▶</button>
+  <!-- ALT DOCK: 3B KAMERA, YIL VE AY ZAMAN ÇUBUĞU -->
+  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[650px] z-20 ios-panel p-3.5 px-5 flex flex-col gap-2.5 pointer-events-auto">
+    <div class="flex justify-between items-center gap-2">
+      <button id="play-btn" onclick="togglePlayTimeline()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition shrink-0">▶</button>
+      
       <div class="text-center flex-1">
         <span id="timeline-label" class="text-sm font-semibold text-white">2021 Yılı (Tüm Aylar)</span>
       </div>
+
+      <!-- 3B Kamera & Projeksiyon Kontrolleri -->
+      <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
+        <button onclick="setCameraView('3d')" id="cam-3d" class="text-[10px] bg-apple-orange text-black px-2 py-1 rounded-md font-semibold transition">3B Arazi</button>
+        <button onclick="setCameraView('2d')" id="cam-2d" class="text-[10px] px-2 py-1 rounded-md text-gray-400 hover:text-white transition">2B Dik</button>
+        <button onclick="setCameraView('globe')" id="cam-globe" class="text-[10px] px-2 py-1 rounded-md text-gray-400 hover:text-white transition">🌐 Küre</button>
+      </div>
+
+      <!-- Altlık Seçimi -->
       <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
         <button onclick="setBaseMap('dark')" id="bm-dark" class="text-[10px] px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition">Koyu</button>
         <button onclick="setBaseMap('sat')" id="bm-sat" class="text-[10px] bg-white/20 px-2.5 py-1 rounded-md text-white font-medium transition">Uydu</button>
@@ -295,7 +306,8 @@
 
     const state = {
       harmonized: true,
-      mapMode: 'h3',          // 'h3' (Isı Yoğunluğu) | 'sensor' (Sensör İzleri)
+      mapMode: 'h3',          // 'h3' (Isı Termal) | 'extrusion' (3B Sütun) | 'sensor' (Sensör İzleri)
+      cameraView: '3d',       // '3d' | '2d' | 'globe'
       scenario: 'all',        // 'all' | 'mugla2021' | 'cukurova' | 'viirs2012'
       selectedYear: 2021,
       selectedMonth: 0,       // 0 = Tüm Aylar, 1..12 = Seçili Ay
@@ -317,7 +329,6 @@
     let aoiStart = null;
     let drawingAOI = false;
 
-    // Coğrafi Filtre
     function passesSpatialFilter(lat, lon) {
       if (state.scenario === 'mugla2021' && (lat > 38.5 || lon > 32.0)) return false; 
       if (state.scenario === 'cukurova' && (lat > 38.0 || lon < 34.0)) return false; 
@@ -329,7 +340,6 @@
       return true;
     }
 
-    // Nokta Bazlı Tam Filtre (Coğrafi + Ay + Sensör + FRP)
     function passesHotspotFilter(h) {
       if (!passesSpatialFilter(h.lat, h.lon)) return false;
       if (state.selectedMonth > 0 && h.month !== state.selectedMonth) return false;
@@ -338,7 +348,6 @@
       return true;
     }
 
-    // --- CSV PARSER ---
     function parseCSV(csvText) {
       const lines = csvText.trim().split('\n');
       if (lines.length < 2) return [];
@@ -356,7 +365,7 @@
     }
 
     // ---------------------------------------------------------
-    // 2. ÖZET JSON ÇEKME (Sıkıştırılmış Şema Çözümleyici)
+    // 2. ÖZET JSON ÇEKME
     // ---------------------------------------------------------
     async function fetchSummaryData() {
       try {
@@ -425,7 +434,7 @@
     }
 
     // ---------------------------------------------------------
-    // 3. YILLIK CSV VERİSİ ÇEKME (LAZY LOADING + ÖNBELLEK)
+    // 3. YILLIK CSV VERİSİ ÇEKME
     // ---------------------------------------------------------
     async function fetchYearlyData(year) {
       if (!year) return;
@@ -479,21 +488,48 @@
     }
 
     // ---------------------------------------------------------
-    // 4. MAPLIBRE GL JS VEKTÖR HARİTA VE POPUP KURULUMU
+    // 4. 3B HARİTA, ARAZİ (TERRAIN DEM) VE TERMAL KATMANLAR
     // ---------------------------------------------------------
     function initMap() {
       map = new maplibregl.Map({
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-        center: [35.2, 38.9],
-        zoom: 5.6,
+        center: [35.0, 38.6],
+        zoom: 5.8,
+        pitch: 52,         // 3 Boyutlu Perspektif Eğim
+        bearing: -6,       // Hafif Dinamik Yönelim
+        maxPitch: 82,
         attributionControl: false
       });
 
       map.on('load', () => {
         isMapLoaded = true;
 
-        // Uydu Katmanı
+        // 1. GERÇEK 3B ARAZİ YÜKSEKLİK KAYNAĞI (AWS Terrarium DEM - API Anahtarsız)
+        map.addSource('terrain-dem', {
+          type: 'raster-dem',
+          tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+          encoding: 'terrarium',
+          tileSize: 256,
+          maxzoom: 13
+        });
+
+        // 3B Rölyefi Aktif Et (Dağları ve Vadileri 1.8x belirginleştirir)
+        map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
+
+        // Atmosferik Gökyüzü ve Ufuk Çizgisi (3B eğimde uzay/ufuk derinliği sağlar)
+        if (map.setSky) {
+          map.setSky({
+            'sky-color': '#07090E',
+            'sky-horizon-blend': 0.4,
+            'horizon-color': '#1A2234',
+            'horizon-fog-blend': 0.6,
+            'fog-color': '#0B0E17',
+            'fog-ground-blend': 0.3
+          });
+        }
+
+        // 2. KONTRASTI DENGELENMİŞ UYDU KATMANI (Isı haritasının kamufle olmasını engeller!)
         map.addSource('esri-sat', {
           type: 'raster',
           tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
@@ -503,97 +539,127 @@
           id: 'sat-layer',
           type: 'raster',
           source: 'esri-sat',
-          layout: { visibility: 'visible' }
+          layout: { visibility: 'visible' },
+          paint: {
+            // Uydu görüntüsünü hafif karartıp toprak sarısını soğutuyoruz ki termal renkler parlasın
+            'raster-brightness-max': 0.62,
+            'raster-brightness-min': 0.04,
+            'raster-contrast': 0.22,
+            'raster-saturation': -0.35
+          }
         });
 
-        // GeoJSON Veri Kaynakları
+        // 3. GEOJSON VERİ KAYNAKLARI
         map.addSource('hotspots-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addSource('extrusion-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('aoi-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('burned-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-        // Yanan Alan Katmanı
+        // 4. YANAN ALAN KATMANI
         map.addLayer({
           id: 'layer-burned',
           type: 'circle',
           source: 'burned-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 10, 32],
-            'circle-color': '#2C1B10',
-            'circle-opacity': 0.72,
-            'circle-stroke-width': 1.2,
-            'circle-stroke-color': '#FF5500'
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 5, 10, 34],
+            'circle-color': '#180B08',
+            'circle-opacity': 0.78,
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': '#FF3B00'
           }
         });
 
-        // Isı Haritası Katmanı
+        // 5. YÜKSEK KONTRASTLI EMİSİF TERMAL ISI HARİTASI
+        // Kahverengi/sarı toprakla asla karışmayan Macenta -> Alev Kırmızısı -> Turuncu -> Akkor Sarı -> Beyaz Merkez
         map.addLayer({
           id: 'layer-heatmap',
           type: 'heatmap',
           source: 'hotspots-data',
           layout: { visibility: 'visible' },
           paint: {
-            'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0.05, 25, 0.25, 100, 0.7, 300, 1],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 4, 0.45, 7, 0.85, 10, 1.6],
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0.15, 25, 0.45, 100, 0.85, 250, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 4, 0.65, 7, 1.15, 10, 2.0],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
-              0, 'rgba(0,0,0,0)',
-              0.15, 'rgba(254, 217, 118, 0.35)',
-              0.35, 'rgba(254, 178, 76, 0.65)',
-              0.6, 'rgba(253, 141, 60, 0.82)',
-              0.85, 'rgba(227, 26, 28, 0.92)',
-              1, 'rgba(128, 0, 38, 0.98)'
+              0, 'rgba(0, 0, 0, 0)',
+              0.12, 'rgba(153, 0, 255, 0.50)',   // Elektrik Mor / Macenta dış hale (Toprak renginden %100 ayrışır)
+              0.30, 'rgba(255, 0, 85, 0.78)',    // Neon Kızıl
+              0.55, 'rgba(255, 59, 0, 0.90)',    // Parlak Alev Kırmızısı
+              0.78, 'rgba(255, 170, 0, 0.96)',   // Solar Turuncu
+              0.92, 'rgba(255, 255, 0, 0.98)',   // Akkor Sarı
+              1.00, 'rgba(255, 255, 255, 1.0)'   // Beyaz Sıcak Merkez (Yangın Çekirdeği)
             ],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 4, 2.5, 6, 4.5, 9, 11, 12, 20],
-            'heatmap-opacity': 0.82
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 4, 3.5, 6, 6, 9, 13, 12, 22],
+            'heatmap-opacity': 0.94
           }
         });
 
-        // Noktasal Sensör İzleri Katmanı
+        // 6. 3 BOYUTLU FRP ENERJİ SÜTUNLARI KATMANI (3D Fill-Extrusion)
+        map.addLayer({
+          id: 'layer-extrusion',
+          type: 'fill-extrusion',
+          source: 'extrusion-data',
+          layout: { visibility: 'none' },
+          paint: {
+            'fill-extrusion-color': [
+              'interpolate', ['linear'], ['get', 'totalFrp'],
+              0, '#9900FF',
+              80, '#FF0055',
+              250, '#FF5500',
+              600, '#FFCC00',
+              1500, '#FFFFFF'
+            ],
+            'fill-extrusion-height': ['get', 'height'],
+            'fill-extrusion-base': 0,
+            'fill-extrusion-opacity': 0.88
+          }
+        });
+
+        // 7. NOKTASAL SENSÖR İZLERİ KATMANI (Parlak Neon Renkler)
         map.addLayer({
           id: 'layer-sensor',
           type: 'circle',
           source: 'hotspots-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.2, 8, 4, 12, 7.5],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 8, 4.5, 12, 8],
             'circle-color': [
               'case',
-              ['==', ['get', 'sensor'], 'MODIS'], '#0A84FF',
-              ['==', ['get', 'sensor'], 'VIIRS'], '#FF3B30',
-              '#FF9500'
+              ['==', ['get', 'sensor'], 'MODIS'], '#00E5FF',
+              ['==', ['get', 'sensor'], 'VIIRS'], '#FF2A55',
+              '#FFE600'
             ],
-            'circle-opacity': 0.9,
-            'circle-stroke-width': 0.5,
-            'circle-stroke-color': 'rgba(0,0,0,0.6)'
+            'circle-opacity': 0.95,
+            'circle-stroke-width': 0.8,
+            'circle-stroke-color': '#000000'
           }
         });
 
-        // Görünmez Etkileşim Katmanı (Her iki modda da tıklama ve popup açmayı sağlar)
+        // 8. GÖRÜNMEZ ETKİLEŞİM KATMANI (Popup için)
         map.addLayer({
           id: 'layer-hit',
           type: 'circle',
           source: 'hotspots-data',
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 5, 10, 10],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 6, 10, 11],
             'circle-color': '#000000',
             'circle-opacity': 0.01
           }
         });
 
-        // AOI Seçim Kutusu Katmanı
+        // 9. AOI SEÇİM KUTUSU
         map.addLayer({
           id: 'layer-aoi',
           type: 'fill',
           source: 'aoi-source',
           paint: {
             'fill-color': '#0A84FF',
-            'fill-opacity': 0.18,
-            'fill-outline-color': '#0A84FF'
+            'fill-opacity': 0.2,
+            'fill-outline-color': '#00E5FF'
           }
         });
 
-        // Fare İmleci Değişimi
         map.on('mouseenter', 'layer-hit', () => {
           if (!drawingAOI) map.getCanvas().style.cursor = 'pointer';
         });
@@ -604,12 +670,10 @@
         renderMapHotspots(state.selectedYear);
       });
 
-      // Harita Hareket Ettiğinde Ekran KPI'larını Güncelle
       map.on('moveend', () => {
         updateViewportKPIs(state.selectedYear);
       });
 
-      // Harita Tıklama: AOI Çizimi veya Yangın Noktası Detay Popup'ı
       map.on('click', (e) => {
         if (drawingAOI) {
           if (!aoiStart) {
@@ -644,7 +708,6 @@
           return;
         }
 
-        // Tıklanan noktadaki yangın verisini sorgula
         const features = map.queryRenderedFeatures(e.point, { layers: ['layer-hit'] });
         if (!features.length) return;
 
@@ -652,8 +715,8 @@
         const coords = features[0].geometry.coordinates.slice();
 
         const sensorBadgeColor = props.sensor.includes('MODIS')
-          ? 'bg-apple-blue/20 text-apple-blue border-apple-blue/30'
-          : (props.sensor.includes('VIIRS') ? 'bg-apple-red/20 text-apple-red border-apple-red/30' : 'bg-apple-orange/20 text-apple-orange border-apple-orange/30');
+          ? 'bg-[#00E5FF]/20 text-[#00E5FF] border-[#00E5FF]/40'
+          : (props.sensor.includes('VIIRS') ? 'bg-[#FF2A55]/20 text-[#FF2A55] border-[#FF2A55]/40' : 'bg-apple-orange/20 text-apple-orange border-apple-orange/40');
 
         const html = `
           <div class="flex flex-col gap-2 text-xs">
@@ -683,8 +746,47 @@
     }
 
     // ---------------------------------------------------------
-    // 5. HARİTA ÇİZİMİ VE VIEWPORT KPI HESAPLAMASI
+    // 5. HARİTA VE 3B SÜTUN (EXTRUSION) ÇİZİM MOTORU
     // ---------------------------------------------------------
+    function buildExtrusionGeoJSON(filtered) {
+      const step = 0.08; // ~8km 3B Sütun Hücre Boyutu
+      const r = 0.032;
+      const bins = {};
+
+      filtered.forEach(d => {
+        const bx = Math.round(d.lon / step) * step;
+        const by = Math.round(d.lat / step) * step;
+        const key = `${bx.toFixed(2)}_${by.toFixed(2)}`;
+        if (!bins[key]) bins[key] = { lon: bx, lat: by, totalFrp: 0, count: 0 };
+        bins[key].totalFrp += d.frp;
+        bins[key].count += 1;
+      });
+
+      const features = Object.values(bins).map(b => {
+        const height = Math.min(65000, Math.max(1500, b.totalFrp * 65));
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [b.lon - r, b.lat - r],
+              [b.lon + r, b.lat - r],
+              [b.lon + r, b.lat + r],
+              [b.lon - r, b.lat + r],
+              [b.lon - r, b.lat - r]
+            ]]
+          },
+          properties: {
+            totalFrp: +b.totalFrp.toFixed(1),
+            count: b.count,
+            height: height
+          }
+        };
+      });
+
+      return { type: 'FeatureCollection', features };
+    }
+
     function renderMapHotspots(year) {
       if (!isMapLoaded) return;
       if (activePopup) { activePopup.remove(); activePopup = null; }
@@ -699,6 +801,7 @@
       }));
 
       map.getSource('hotspots-data').setData({ type: 'FeatureCollection', features: features });
+      map.getSource('extrusion-data').setData(buildExtrusionGeoJSON(filtered));
 
       if (state.showBurnedArea) {
         const grid = {};
@@ -757,7 +860,6 @@
       calendarChart = echarts.init(document.getElementById('calendar-chart'));
       timeseriesChart = echarts.init(document.getElementById('timeseries-chart'));
 
-      // Matris Hücresine Tıklanınca Hem Yılı Hem Ayı Seç
       calendarChart.on('click', (params) => {
         if (params.data && state.availableYears[params.data[1]]) {
           const clickedMonth = params.data[0] + 1;
@@ -875,8 +977,33 @@
     }
 
     // ---------------------------------------------------------
-    // 7. ARAYÜZ ETKİLEŞİM VE DIŞA AKTARIM FONKSİYONLARI
+    // 7. 3B KAMERA, KATMAN VE ARAYÜZ FONKSİYONLARI
     // ---------------------------------------------------------
+    function setCameraView(view) {
+      if (!isMapLoaded) return;
+      state.cameraView = view;
+
+      ['3d', '2d', 'globe'].forEach(v => {
+        const btn = document.getElementById('cam-' + v);
+        btn.className = (v === view)
+          ? 'text-[10px] bg-apple-orange text-black px-2 py-1 rounded-md font-semibold transition'
+          : 'text-[10px] px-2 py-1 rounded-md text-gray-400 hover:text-white transition';
+      });
+
+      if (view === 'globe') {
+        if (map.setProjection) map.setProjection({ type: 'globe' });
+        map.easeTo({ pitch: 35, bearing: 0, zoom: 4.2, duration: 1200 });
+      } else if (view === '3d') {
+        if (map.setProjection) map.setProjection({ type: 'mercator' });
+        map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
+        map.easeTo({ pitch: 54, bearing: -8, duration: 1000 });
+      } else {
+        if (map.setProjection) map.setProjection({ type: 'mercator' });
+        map.setTerrain(null);
+        map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
+      }
+    }
+
     function setSensorFilter(sensor) {
       state.sensorFilter = sensor;
       ['all', 'MODIS', 'VIIRS'].forEach(s => {
@@ -912,14 +1039,21 @@
 
     function setMapDisplayMode(mode) { 
       state.mapMode = mode; 
-      document.getElementById('mode-h3').classList.toggle('active', mode === 'h3');
-      document.getElementById('mode-sensor').classList.toggle('active', mode === 'sensor');
-      document.getElementById('legend-heatmap').classList.toggle('hidden', mode !== 'h3');
+      ['h3', 'extrusion', 'sensor'].forEach(m => {
+        document.getElementById('mode-' + m).classList.toggle('active', m === mode);
+      });
+
+      document.getElementById('legend-heatmap').classList.toggle('hidden', mode === 'sensor');
       document.getElementById('legend-sensor').classList.toggle('hidden', mode !== 'sensor');
 
       if (isMapLoaded) {
         map.setLayoutProperty('layer-heatmap', 'visibility', mode === 'h3' ? 'visible' : 'none');
+        map.setLayoutProperty('layer-extrusion', 'visibility', mode === 'extrusion' ? 'visible' : 'none');
         map.setLayoutProperty('layer-sensor', 'visibility', mode === 'sensor' ? 'visible' : 'none');
+
+        if (mode === 'extrusion' && map.getPitch() < 35) {
+          setCameraView('3d');
+        }
       }
     }
 
@@ -944,14 +1078,14 @@
         r2.className = 'text-[11px] text-apple-green font-medium mt-0.5';
         badge.textContent = 'Uyumlu Olay';
         badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange font-medium';
-        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.45, 7, 0.85, 10, 1.6]);
+        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.65, 7, 1.15, 10, 2.0]);
       } else {
         toggle.classList.remove('active');
         r2.textContent = 'Kapalı — Ham Piksel Görünümü';
         r2.className = 'text-[11px] text-apple-red font-medium mt-0.5';
         badge.textContent = 'Ham Piksel';
         badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-red/20 text-apple-red font-medium';
-        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.8, 7, 1.4, 10, 2.5]);
+        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 1.1, 7, 1.8, 10, 3.0]);
       }
       updateSummaryCharts();
       renderMapHotspots(state.selectedYear);
@@ -965,10 +1099,11 @@
           : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
       });
       if (!isMapLoaded) return;
-      if (scen === 'all') map.flyTo({ center: [35.2, 38.9], zoom: 5.6 });
-      else if (scen === 'mugla2021') map.flyTo({ center: [29.2, 36.9], zoom: 7.3 });
-      else if (scen === 'cukurova') map.flyTo({ center: [37.5, 37.2], zoom: 7.0 });
-      else if (scen === 'viirs2012') map.flyTo({ center: [33.5, 39.8], zoom: 6.5 });
+      const targetPitch = state.cameraView === '2d' ? 0 : 56;
+      if (scen === 'all') map.flyTo({ center: [35.0, 38.6], zoom: 5.8, pitch: targetPitch, bearing: -6, duration: 1400 });
+      else if (scen === 'mugla2021') map.flyTo({ center: [29.2, 36.85], zoom: 7.8, pitch: targetPitch, bearing: 18, duration: 1500 });
+      else if (scen === 'cukurova') map.flyTo({ center: [37.5, 37.2], zoom: 7.4, pitch: targetPitch, bearing: -15, duration: 1500 });
+      else if (scen === 'viirs2012') map.flyTo({ center: [33.5, 39.8], zoom: 6.8, pitch: targetPitch, bearing: 8, duration: 1500 });
 
       renderMapHotspots(state.selectedYear);
       updateSummaryCharts();
