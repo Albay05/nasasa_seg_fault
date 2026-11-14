@@ -1,106 +1,113 @@
 {
-  "tau_modis_mw": 5.0,
-  "censored_micro_fires": 235293,
+  "tau_modis_mw": 4.9,
+  "tau_day_mw": 4.7,
+  "tau_night_mw": 6.0,
+  "censored_micro_fires": 112466,
+  "removed_static_sources": 889429,
+  "masked_industrial_cells": 30244,
+  "overlap_r2_score": 0.9057,
+  "quantile_rmse_raw_mw": 17.04,
+  "quantile_rmse_harm_mw": 1.36,
   "quantile_curve": [
     {
       "percentile": 0.0,
-      "viirs_raw_mw": 5.0,
-      "modis_target_mw": 5.0
+      "viirs_raw_mw": 4.7,
+      "modis_target_mw": 4.7
     },
     {
       "percentile": 5.0,
-      "viirs_raw_mw": 5.31,
-      "modis_target_mw": 5.9
+      "viirs_raw_mw": 5.01,
+      "modis_target_mw": 5.7
     },
     {
       "percentile": 10.0,
-      "viirs_raw_mw": 5.66,
-      "modis_target_mw": 6.7
+      "viirs_raw_mw": 5.37,
+      "modis_target_mw": 6.5
     },
     {
       "percentile": 15.0,
-      "viirs_raw_mw": 6.04,
-      "modis_target_mw": 7.6
+      "viirs_raw_mw": 5.76,
+      "modis_target_mw": 7.3
     },
     {
       "percentile": 20.0,
-      "viirs_raw_mw": 6.46,
-      "modis_target_mw": 8.4
+      "viirs_raw_mw": 6.17,
+      "modis_target_mw": 8.2
     },
     {
       "percentile": 25.0,
-      "viirs_raw_mw": 6.92,
-      "modis_target_mw": 9.3
+      "viirs_raw_mw": 6.61,
+      "modis_target_mw": 9.1
     },
     {
       "percentile": 30.0,
-      "viirs_raw_mw": 7.44,
-      "modis_target_mw": 10.3
+      "viirs_raw_mw": 7.11,
+      "modis_target_mw": 10.1
     },
     {
       "percentile": 35.0,
-      "viirs_raw_mw": 8.03,
-      "modis_target_mw": 11.4
+      "viirs_raw_mw": 7.66,
+      "modis_target_mw": 11.2
     },
     {
       "percentile": 40.0,
-      "viirs_raw_mw": 8.68,
-      "modis_target_mw": 12.7
+      "viirs_raw_mw": 8.29,
+      "modis_target_mw": 12.5
     },
     {
       "percentile": 45.0,
-      "viirs_raw_mw": 9.44,
-      "modis_target_mw": 14.1
+      "viirs_raw_mw": 9.01,
+      "modis_target_mw": 14.0
     },
     {
       "percentile": 50.0,
-      "viirs_raw_mw": 10.32,
+      "viirs_raw_mw": 9.86,
       "modis_target_mw": 15.8
     },
     {
       "percentile": 55.0,
-      "viirs_raw_mw": 11.34,
-      "modis_target_mw": 17.8
+      "viirs_raw_mw": 10.88,
+      "modis_target_mw": 17.9
     },
     {
       "percentile": 60.0,
-      "viirs_raw_mw": 12.58,
-      "modis_target_mw": 20.2
+      "viirs_raw_mw": 12.11,
+      "modis_target_mw": 20.5
     },
     {
       "percentile": 65.0,
-      "viirs_raw_mw": 14.1,
-      "modis_target_mw": 23.1
+      "viirs_raw_mw": 13.63,
+      "modis_target_mw": 23.7
     },
     {
       "percentile": 70.0,
-      "viirs_raw_mw": 16.03,
-      "modis_target_mw": 26.88
+      "viirs_raw_mw": 15.58,
+      "modis_target_mw": 27.9
     },
     {
       "percentile": 75.0,
-      "viirs_raw_mw": 18.63,
-      "modis_target_mw": 31.9
+      "viirs_raw_mw": 18.25,
+      "modis_target_mw": 33.6
     },
     {
       "percentile": 80.0,
-      "viirs_raw_mw": 22.21,
-      "modis_target_mw": 39.0
+      "viirs_raw_mw": 22.05,
+      "modis_target_mw": 42.3
     },
     {
       "percentile": 85.0,
-      "viirs_raw_mw": 27.72,
-      "modis_target_mw": 49.5
+      "viirs_raw_mw": 28.13,
+      "modis_target_mw": 55.6
     },
     {
       "percentile": 90.0,
-      "viirs_raw_mw": 37.32,
-      "modis_target_mw": 67.0
+      "viirs_raw_mw": 39.41,
+      "modis_target_mw": 79.9
     },
     {
       "percentile": 95.0,
-      "viirs_raw_mw": 61.25,
-      "modis_target_mw": 109.9
+      "viirs_raw_mw": 70.56,
+      "modis_target_mw": 144.7
     },
     {
       "percentile": 100.0,
