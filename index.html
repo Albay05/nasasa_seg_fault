@@ -24,36 +24,39 @@
     }
   </script>
 
-  <!-- YENİ HARİTA MOTORU: MapLibre GL JS (WebGL / GPU Hızlandırmalı Vektör Mimari) -->
+  <!-- MapLibre GL JS (WebGL / GPU Vektör Mimari) -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   
+  <!-- Apache ECharts -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
   <style>
     * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
     body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
-    .ios-panel { background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); border-radius: 20px; }
+    .ios-panel { background: rgba(28, 28, 30, 0.76); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55); border-radius: 20px; }
     
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #000; }
-    /* MapLibre logolarını gizle (Opsiyonel) */
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #090A0F; }
     .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { display: none !important; }
 
     .segmented-control { background: rgba(118, 118, 128, 0.24); padding: 2px; border-radius: 8px; display: flex; }
     .segmented-btn { flex: 1; text-align: center; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; color: #EBEBF5; transition: all 0.2s ease; cursor: pointer; }
-    .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-    .ios-toggle { width: 44px; height: 24px; border-radius: 24px; background: #39393D; position: relative; cursor: pointer; transition: background 0.3s ease; }
+    .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+    .ios-toggle { width: 44px; height: 24px; border-radius: 24px; background: #39393D; position: relative; cursor: pointer; transition: background 0.3s ease; shrink: 0; }
     .ios-toggle.active { background: #32D74B; }
-    .ios-toggle-knob { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2); }
+    .ios-toggle-knob { width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.25); transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2); }
     .ios-toggle.active .ios-toggle-knob { transform: translateX(20px); }
+
     input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
     input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.2); }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; border: 1px solid #d1d1d6; margin-top: -6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; border: 1px solid #d1d1d6; margin-top: -6px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
     
-    .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #FF9500; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
+    .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #FF9500; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
@@ -62,36 +65,44 @@
 
   <div id="map"></div>
 
+  <!-- AOI Çizim Bilgilendirme -->
   <div id="aoi-banner" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-30 ios-panel px-4 py-2 text-xs flex items-center gap-3">
     <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
-    <span>Haritada bir alan çizmek için başlangıç ve bitiş noktasına tıklayın.</span>
+    <span>Haritada dikdörtgen alan seçmek için başlangıç ve bitiş noktasına tıklayın.</span>
     <button onclick="cancelAOIDraw()" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
   </div>
 
+  <!-- SOL PANEL -->
   <aside class="fixed top-6 left-6 bottom-6 w-[340px] z-20 flex flex-col gap-4 pointer-events-auto">
     <div class="ios-panel p-5 flex flex-col gap-4">
-      <div class="flex items-center justify-between mb-1">
+      <div class="flex items-center justify-between">
         <div>
           <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
-          <p class="text-[11px] text-gray-400 font-medium mt-0.5">Vektörel (WebGL) Motoru</p>
+          <p class="text-[11px] text-gray-400 font-medium mt-0.5">MODIS & VIIRS Vektörel Motoru</p>
         </div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-medium">WebGL 2.0</span>
       </div>
 
+      <!-- Bölge Seçimi -->
       <div class="flex flex-col gap-1.5">
         <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bölge Seçimi</label>
         <div class="grid grid-cols-2 gap-2 text-xs">
-          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition">Tüm Alan</button>
+          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/10 transition font-medium">Tüm Alan</button>
           <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz/Ege</button>
           <button onclick="selectScenario('cukurova')" id="scen-cukurova" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Güney/Doğu</button>
           <button onclick="selectScenario('viirs2012')" id="scen-viirs2012" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Merkez/Kuzey</button>
         </div>
       </div>
 
-      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+      <!-- Harita Katmanları -->
+      <div class="flex flex-col gap-2 pt-2 border-t border-white/10">
         <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Harita Katmanları</label>
         
-        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5 mb-1">
-          <span class="text-xs text-gray-300 flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-[#4A3C31] border border-[#FF5500]/50 rounded-sm"></span> Yanan Alanlar (Burned Area)</span>
+        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5">
+          <span class="text-xs text-gray-300 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-[#4A3C31] border border-[#FF5500] rounded-sm inline-block"></span>
+            Yanan Alanlar (Burned Area)
+          </span>
           <div id="burned-toggle" onclick="toggleBurnedArea()" class="ios-toggle">
             <div class="ios-toggle-knob"></div>
           </div>
@@ -101,97 +112,136 @@
           <div onclick="setMapDisplayMode('h3')" id="mode-h3" class="segmented-btn active">Isı Yoğunluğu</div>
           <div onclick="setMapDisplayMode('sensor')" id="mode-sensor" class="segmented-btn">Sensör İzleri</div>
         </div>
+
+        <!-- Dinamik Lejant -->
+        <div id="legend-heatmap" class="flex flex-col gap-1 pt-1">
+          <div class="flex justify-between text-[10px] text-gray-400">
+            <span>Düşük (5 MW)</span>
+            <span>Orta</span>
+            <span>Yüksek (150+ MW)</span>
+          </div>
+          <div class="h-1.5 w-full rounded-full" style="background: linear-gradient(90deg, rgba(254,217,118,0.4) 0%, #feb24c 35%, #fd8d3c 65%, #e31a1c 85%, #800026 100%);"></div>
+        </div>
+
+        <div id="legend-sensor" class="hidden flex items-center justify-around pt-1 text-[11px] text-gray-300">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-blue inline-block"></span> MODIS (1km)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-red inline-block"></span> VIIRS (375m)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-apple-orange inline-block"></span> Ortak</span>
+        </div>
       </div>
 
+      <!-- Alan Çizim Aracı -->
       <div class="flex gap-2 pt-1">
-        <button onclick="startAOIDraw()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5">
-          <span class="text-apple-blue text-sm">⛶</span> Alan Çiz
+        <button onclick="startAOIDraw()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5 font-medium">
+          <span class="text-apple-blue text-sm">⛶</span> Alan Çiz (AOI)
         </button>
-        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden bg-apple-red/20 text-apple-red text-xs px-3 rounded-lg border border-apple-red/30 hover:bg-apple-red/30">✕</button>
+        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden bg-apple-red/20 text-apple-red text-xs px-3 rounded-lg border border-apple-red/30 hover:bg-apple-red/30 font-medium">Temizle ✕</button>
       </div>
     </div>
 
-    <!-- HARİTA BİLGİLERİ -->
+    <!-- EKRAN (VIEWPORT) KPI BİLGİLERİ -->
     <div class="ios-panel p-4 grid grid-cols-2 gap-3 flex-1">
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2 relative">
+      <div class="flex flex-col justify-between bg-white/5 rounded-xl px-3.5 py-3 relative">
         <div class="flex items-center justify-between text-[10px] font-medium text-gray-400 w-full">
           <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span> EKRANDAKİ NOKTA</span>
           <div id="loading-indicator" class="hidden"><span class="loader"></span></div>
         </div>
-        <div id="kpi-count" class="text-2xl font-semibold text-white tracking-tight mt-1">Seçim Yapın</div>
-        <div id="kpi-count-sub" class="text-[9px] text-gray-500 mt-0.5">Görüntülenen Yıl İçin</div>
+        <div id="kpi-count" class="text-2xl font-semibold text-white tracking-tight my-1">0</div>
+        <div id="kpi-count-sub" class="text-[10px] text-gray-400">Yıl Toplamı: 0</div>
       </div>
-      <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2">
+
+      <div class="flex flex-col justify-between bg-white/5 rounded-xl px-3.5 py-3">
         <div class="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-          <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span> ORT. ENERJİ
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span> ORT. ENERJİ (FRP)
         </div>
-        <div id="kpi-frp" class="text-2xl font-semibold text-white tracking-tight mt-1">0.0</div>
-        <div class="text-[9px] text-gray-500 mt-0.5">Megawatt (MW)</div>
+        <div id="kpi-frp" class="text-2xl font-semibold text-white tracking-tight my-1">0.0</div>
+        <div id="kpi-frp-sub" class="text-[10px] text-gray-400">Megawatt (MW)</div>
       </div>
     </div>
   </aside>
 
-  <aside class="fixed top-6 right-6 bottom-6 w-[400px] z-20 flex flex-col gap-4 pointer-events-auto">
+  <!-- SAĞ PANEL: KALİBRASYON VE ÖZET GRAFİKLER -->
+  <aside class="fixed top-6 right-6 bottom-6 w-[410px] z-20 flex flex-col gap-4 pointer-events-auto">
     <div class="ios-panel p-5">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-2">
         <div>
           <h2 class="text-base font-semibold text-white">Sensör Uyumlaştırma</h2>
-          <p id="r2-score" class="text-[11px] text-apple-green mt-0.5">Aktif</p>
+          <p id="r2-score" class="text-[11px] text-apple-green font-medium mt-0.5">Aktif — Kantil & H3 Kalibrasyonu</p>
         </div>
         <div id="harm-toggle" onclick="toggleHarmonization()" class="ios-toggle active">
           <div class="ios-toggle-knob"></div>
         </div>
       </div>
-      <p id="harm-desc" class="text-[10px] text-gray-400 leading-relaxed">
-        Veriler kalibrasyon mekanizmasından geçirilmiş haliyle gösteriliyor.
+      <p id="harm-desc" class="text-[11px] text-gray-400 leading-relaxed">
+        VIIRS (375m) aşırı örneklemeleri filtrelenerek MODIS (1km) referans serisine uyumlaştırıldı. Matristen yıl seçmek için hücrelere tıklayabilirsiniz.
       </p>
     </div>
 
+    <!-- Aylık & Yıllık Matris -->
     <div class="ios-panel p-5 flex flex-col flex-1 min-h-0">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-white">Aylık & Yıllık Matris (Özet)</h3>
+        <div>
+          <h3 class="text-sm font-semibold text-white">Aylık & Yıllık Matris (2000–2026)</h3>
+          <p class="text-[10px] text-gray-400">Hücreye tıklayarak ilgili yıla geçiş yapın</p>
+        </div>
+        <span id="matrix-mode-badge" class="text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange font-medium">Uyumlu Olay</span>
       </div>
-      <div id="calendar-chart" class="w-full flex-1"></div>
+      <div id="calendar-chart" class="w-full flex-1 min-h-[180px]"></div>
     </div>
 
-    <div class="ios-panel p-5 flex flex-col h-[220px] shrink-0">
-      <h3 class="text-sm font-semibold text-white mb-2">Zaman Serisi (26 Yıl Trend)</h3>
+    <!-- Zaman Serisi -->
+    <div class="ios-panel p-5 flex flex-col h-[230px] shrink-0">
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-sm font-semibold text-white">Zaman Serisi (26 Yıl Trend)</h3>
+        <div class="flex items-center gap-3 text-[10px]">
+          <span class="flex items-center gap-1 text-apple-orange"><span class="w-2 h-2 rounded-full bg-apple-orange inline-block"></span> Uyumlu</span>
+          <span class="flex items-center gap-1 text-apple-red"><span class="w-2 h-0.5 bg-apple-red inline-block"></span> Ham Piksel</span>
+        </div>
+      </div>
       <div id="timeseries-chart" class="w-full flex-1"></div>
     </div>
   </aside>
 
-  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[540px] z-20 ios-panel p-3 px-5 flex flex-col gap-2 pointer-events-auto">
-    <div class="flex justify-between items-end">
-      <button id="play-btn" onclick="togglePlayTimeline()" class="text-xl text-white hover:text-gray-300 transition w-8">▶</button>
+  <!-- ALT DOCK: ZAMAN ÇUBUĞU -->
+  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[560px] z-20 ios-panel p-3.5 px-5 flex flex-col gap-2 pointer-events-auto">
+    <div class="flex justify-between items-center">
+      <button id="play-btn" onclick="togglePlayTimeline()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition">▶</button>
       <div class="text-center flex-1">
-        <span id="timeline-label" class="text-sm font-semibold text-white">Lütfen Bir Yıl Seçin</span>
+        <span id="timeline-label" class="text-sm font-semibold text-white">2021 Yılı Görüntüleniyor</span>
       </div>
-      <div class="flex gap-2">
-        <button onclick="setBaseMap('dark')" id="bm-dark" class="text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition">Koyu</button>
-        <button onclick="setBaseMap('sat')" id="bm-sat" class="text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition">Uydu</button>
+      <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
+        <button onclick="setBaseMap('dark')" id="bm-dark" class="text-[10px] px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition">Koyu</button>
+        <button onclick="setBaseMap('sat')" id="bm-sat" class="text-[10px] bg-white/20 px-2.5 py-1 rounded-md text-white font-medium transition">Uydu</button>
       </div>
     </div>
-    <div class="flex items-center gap-3 mt-1">
-      <input id="year-slider" type="range" min="2000" max="2026" value="2000" oninput="onYearSliderInput(this.value)" class="flex-1" />
+    <div class="flex items-center gap-3">
+      <span id="min-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2000</span>
+      <input id="year-slider" type="range" min="2000" max="2026" value="2021" oninput="onYearSliderInput(this.value)" class="flex-1" />
+      <span id="max-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2026</span>
     </div>
   </footer>
 
   <script>
     // ---------------------------------------------------------
-    // HİBRİT MİMARİ + WEGL VEKTÖR (GPU) OPTİMİZASYONU
+    // 1. VERİ YOLLARI VE UYGULAMA DURUMU (STATE)
     // ---------------------------------------------------------
     const RAW_BASE_URL = 'https://raw.githubusercontent.com/Albay05/sistem_odevleri/main/public/data';
     const SUMMARY_JSON_URL = `${RAW_BASE_URL}/calendar_summary.json`;
     const YEARLY_CSV_PATH = `${RAW_BASE_URL}/yearly_csv`;
 
     const state = {
-      harmonized: true, mapMode: 'h3', scenario: 'all', selectedYear: 2021, 
-      showBurnedArea: false, colorRamp: 'YlOrRd', aoiBounds: null, playing: false, playTimer: null,
-      availableYears: [] 
+      harmonized: true,
+      mapMode: 'h3',        // 'h3' (Isı Yoğunluğu) | 'sensor' (Sensör İzleri)
+      scenario: 'all',      // 'all' | 'mugla2021' | 'cukurova' | 'viirs2012'
+      selectedYear: 2021,
+      showBurnedArea: false,
+      aoiBounds: null,
+      playing: false,
+      playTimer: null,
+      availableYears: []
     };
 
     const MONTHS_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    
     const mapDataCache = {}; 
     let summaryData = []; 
     let map = null;
@@ -199,10 +249,22 @@
     let aoiStart = null;
     let drawingAOI = false;
 
+    // Coğrafi Filtre Yardımcı Fonksiyonu (Hem Harita Hem Özet Grafikler İçin)
+    function passesSpatialFilter(lat, lon) {
+      if (state.scenario === 'mugla2021' && (lat > 38.5 || lon > 32.0)) return false; 
+      if (state.scenario === 'cukurova' && (lat > 38.0 || lon < 34.0)) return false; 
+      if (state.scenario === 'viirs2012' && (lat < 38.5 || lon < 31.0)) return false; 
+      if (state.aoiBounds) {
+        if (lon < state.aoiBounds.minLng || lon > state.aoiBounds.maxLng ||
+            lat < state.aoiBounds.minLat || lat > state.aoiBounds.maxLat) return false;
+      }
+      return true;
+    }
+
     // --- CSV PARSER ---
     function parseCSV(csvText) {
       const lines = csvText.trim().split('\n');
-      if(lines.length < 2) return [];
+      if (lines.length < 2) return [];
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       const data = [];
       for (let i = 1; i < lines.length; i++) {
@@ -216,26 +278,66 @@
       return data;
     }
 
-    // --- ÖZET JSON ÇEKME (Grafikler İçin) ---
+    // ---------------------------------------------------------
+    // 2. ÖZET JSON ÇEKME (Sıkıştırılmış Şema Çözümleyici)
+    // ---------------------------------------------------------
     async function fetchSummaryData() {
       try {
         const response = await fetch(SUMMARY_JSON_URL);
-        if(!response.ok) throw new Error("Özet JSON bulunamadı.");
+        if (!response.ok) throw new Error("Özet JSON bulunamadı.");
         const json = await response.json();
         
         const years = new Set();
-        summaryData = json.map(item => {
-          years.add(item.year);
-          return { year: item.year, month: item.month, events: item.fire_events, frp: item.total_frp_harm, rawPixels: item.raw_pixels };
-        });
+        summaryData = [];
 
-        state.availableYears = Array.from(years).sort((a,b) => a - b);
+        // Sıkıştırılmış şema kontrolü: { meta: { base_year: 2000 }, grid: [...], records: [...] }
+        if (json.records && Array.isArray(json.records)) {
+          const baseYear = json.meta?.base_year || 2000;
+          const grid = json.grid || [];
+
+          json.records.forEach(r => {
+            const cellCoords = grid[r[0]] || [38.9, 35.2];
+            const yr = baseYear + r[1];
+            years.add(yr);
+            summaryData.push({
+              lat: cellCoords[0],
+              lon: cellCoords[1],
+              year: yr,
+              month: r[2],
+              events: r[3],       // fire_events (Uyumlaştırılmış)
+              frp: r[4],          // total_frp_harm
+              rawPixels: r[5]     // raw_pixels (Ham)
+            });
+          });
+        } else if (Array.isArray(json)) {
+          // Düz liste yedek desteği
+          json.forEach(item => {
+            years.add(item.year);
+            summaryData.push({
+              lat: item.reg_lat || 38.9,
+              lon: item.reg_lon || 35.2,
+              year: item.year,
+              month: item.month,
+              events: item.fire_events,
+              frp: item.total_frp_harm,
+              rawPixels: item.raw_pixels
+            });
+          });
+        }
+
+        state.availableYears = Array.from(years).sort((a, b) => a - b);
         
-        if(state.availableYears.length > 0) {
-          document.getElementById('year-slider').min = state.availableYears[0]; 
-          document.getElementById('year-slider').max = state.availableYears[state.availableYears.length-1];
-          if(state.availableYears.includes(2021)) state.selectedYear = 2021;
-          else state.selectedYear = state.availableYears[state.availableYears.length-1];
+        if (state.availableYears.length > 0) {
+          const minYear = state.availableYears[0];
+          const maxYear = state.availableYears[state.availableYears.length - 1];
+          document.getElementById('year-slider').min = minYear; 
+          document.getElementById('year-slider').max = maxYear;
+          document.getElementById('min-year-label').textContent = minYear;
+          document.getElementById('max-year-label').textContent = maxYear;
+
+          if (!state.availableYears.includes(state.selectedYear)) {
+            state.selectedYear = state.availableYears.includes(2021) ? 2021 : maxYear;
+          }
           document.getElementById('year-slider').value = state.selectedYear;
         }
 
@@ -247,22 +349,24 @@
       }
     }
 
-    // --- CSV VERİ ÇEKME (Harita İçin Lazy Load) ---
+    // ---------------------------------------------------------
+    // 3. YILLIK CSV VERİSİ ÇEKME (LAZY LOADING + ÖNBELLEK)
+    // ---------------------------------------------------------
     async function fetchYearlyData(year) {
-      if(!year) return;
+      if (!year) return;
       
-      if(mapDataCache[year]) {
+      if (mapDataCache[year]) {
         renderMapHotspots(year);
         return;
       }
 
       try {
         document.getElementById('loading-indicator').classList.remove('hidden');
-        document.getElementById('kpi-count').textContent = 'İndiriliyor...';
+        document.getElementById('kpi-count').textContent = '...';
 
         const fileUrl = `${YEARLY_CSV_PATH}/harmonized_${year}.csv`;
         const response = await fetch(fileUrl);
-        if(!response.ok) throw new Error(`${year} CSV yok`);
+        if (!response.ok) throw new Error(`${year} CSV dosyası bulunamadı`);
         
         const textData = await response.text();
         const rawData = parseCSV(textData);
@@ -271,7 +375,7 @@
         rawData.forEach(item => {
           const lat = parseFloat(item.lat || 0);
           const lon = parseFloat(item.lon || 0);
-          if(lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
+          if (lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
             parsedYearData.push({
               lat: lat, 
               lon: lon,
@@ -284,31 +388,31 @@
         mapDataCache[year] = parsedYearData;
         document.getElementById('loading-indicator').classList.add('hidden');
         renderMapHotspots(year);
-      } catch(error) {
+      } catch (error) {
         console.warn(error);
         document.getElementById('loading-indicator').classList.add('hidden');
-        document.getElementById('kpi-count').textContent = 'Kayıt Yok';
+        document.getElementById('kpi-count').textContent = '0';
         mapDataCache[year] = []; 
         renderMapHotspots(year);
       }
     }
 
-    // =========================================================================
-    // MAPLIBRE GL JS BAŞLATMA (GPU VEKTÖR MOTORU)
-    // =========================================================================
+    // ---------------------------------------------------------
+    // 4. MAPLIBRE GL JS VEKTÖR HARİTA KURULUMU
+    // ---------------------------------------------------------
     function initMap() {
       map = new maplibregl.Map({
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
         center: [35.2, 38.9],
-        zoom: 5.5,
+        zoom: 5.6,
         attributionControl: false
       });
 
       map.on('load', () => {
         isMapLoaded = true;
 
-        // --- 1. UYDU (SATELLITE) KATMANI (Gizli başlar) ---
+        // Uydu Katmanı (Varsayılan Görünür)
         map.addSource('esri-sat', {
           type: 'raster',
           tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
@@ -318,89 +422,99 @@
           id: 'sat-layer',
           type: 'raster',
           source: 'esri-sat',
-          layout: { visibility: 'none' }
+          layout: { visibility: 'visible' }
         });
 
-        // --- 2. VERİ KAYNAKLARI (GeoJSON) ---
+        // GeoJSON Veri Kaynakları
         map.addSource('hotspots-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('aoi-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('burned-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-        // --- 3. YANAN ALAN (Siyah Çemberler) ---
+        // Yanan Alan Katmanı
         map.addLayer({
           id: 'layer-burned',
           type: 'circle',
           source: 'burned-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 5, 10, 40],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 10, 32],
             'circle-color': '#2C1B10',
-            'circle-opacity': 0.7,
-            'circle-stroke-width': 1,
+            'circle-opacity': 0.72,
+            'circle-stroke-width': 1.2,
             'circle-stroke-color': '#FF5500'
           }
         });
 
-        // --- 4. ISI HARİTASI KATMANI (Heatmap - GPU) ---
+        // KESKİNLEŞTİRİLMİŞ ISI HARİTASI KATMANI (Aşırı yayılma önlendi)
         map.addLayer({
           id: 'layer-heatmap',
           type: 'heatmap',
           source: 'hotspots-data',
           layout: { visibility: 'visible' },
           paint: {
-            'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0, 100, 1],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 3],
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0.05, 25, 0.25, 100, 0.7, 300, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 4, 0.45, 7, 0.85, 10, 1.6],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
-              0, 'rgba(0,0,0,0)', 0.2, '#fed976', 0.4, '#feb24c', 0.6, '#fd8d3c', 0.8, '#f03b20', 1, '#bd0026'
+              0, 'rgba(0,0,0,0)',
+              0.15, 'rgba(254, 217, 118, 0.35)',
+              0.35, 'rgba(254, 178, 76, 0.65)',
+              0.6, 'rgba(253, 141, 60, 0.82)',
+              0.85, 'rgba(227, 26, 28, 0.92)',
+              1, 'rgba(128, 0, 38, 0.98)'
             ],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 3, 9, 20],
-            'heatmap-opacity': 0.85
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 4, 2.5, 6, 4.5, 9, 11, 12, 20],
+            'heatmap-opacity': 0.82
           }
         });
 
-        // --- 5. NOKTASAL SENSÖR KATMANI (Circle - GPU) ---
+        // Noktasal Sensör İzleri Katmanı
         map.addLayer({
           id: 'layer-sensor',
           type: 'circle',
           source: 'hotspots-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 6],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 8, 3.5, 12, 7],
             'circle-color': [
               'match', ['get', 'sensor'],
               'MODIS', '#0A84FF',
               'VIIRS', '#FF3B30',
-              '#FF9500' 
+              '#FF9500'
             ],
-            'circle-opacity': 0.9
+            'circle-opacity': 0.88,
+            'circle-stroke-width': 0.5,
+            'circle-stroke-color': 'rgba(0,0,0,0.5)'
           }
         });
 
-        // --- 6. AOI (Seçim) KATMANI ---
+        // AOI Seçim Kutusu Katmanı
         map.addLayer({
           id: 'layer-aoi',
           type: 'fill',
           source: 'aoi-source',
           paint: {
             'fill-color': '#0A84FF',
-            'fill-opacity': 0.2,
+            'fill-opacity': 0.18,
             'fill-outline-color': '#0A84FF'
           }
         });
 
-        // Eğer veriler haritadan önce yüklendiyse şimdi çiz!
         renderMapHotspots(state.selectedYear);
       });
 
-      // AOI (Alan) Çizim Olayları (MapLibre'ye Uyarlanmış)
+      // Harita kaydırıldığında veya yakınlaştırıldığında Ekrandaki KPI'ları dinamik güncelle
+      map.on('moveend', () => {
+        updateViewportKPIs(state.selectedYear);
+      });
+
+      // AOI Tıklama Dinleyicisi
       map.on('click', (e) => {
         if (!drawingAOI) return;
         if (!aoiStart) {
           aoiStart = [e.lngLat.lng, e.lngLat.lat];
         } else {
           const aoiEnd = [e.lngLat.lng, e.lngLat.lat];
-          
           state.aoiBounds = {
             minLng: Math.min(aoiStart[0], aoiEnd[0]), maxLng: Math.max(aoiStart[0], aoiEnd[0]),
             minLat: Math.min(aoiStart[1], aoiEnd[1]), maxLat: Math.max(aoiStart[1], aoiEnd[1])
@@ -413,7 +527,8 @@
               geometry: {
                 type: 'Polygon',
                 coordinates: [[
-                  [aoiStart[0], aoiStart[1]], [aoiEnd[0], aoiStart[1]], [aoiEnd[0], aoiEnd[1]], [aoiStart[0], aoiEnd[1]], [aoiStart[0], aoiStart[1]]
+                  [aoiStart[0], aoiStart[1]], [aoiEnd[0], aoiStart[1]],
+                  [aoiEnd[0], aoiEnd[1]], [aoiStart[0], aoiEnd[1]], [aoiStart[0], aoiStart[1]]
                 ]]
               }
             }]
@@ -423,92 +538,20 @@
           document.getElementById('aoi-banner').classList.add('hidden');
           document.getElementById('clear-aoi-btn').classList.remove('hidden');
           renderMapHotspots(state.selectedYear);
+          updateSummaryCharts();
         }
       });
     }
 
-    // --- ARAYÜZ KONTROLLERİ ---
-    function setBaseMap(type) {
-      if(!isMapLoaded) return;
-      map.setLayoutProperty('sat-layer', 'visibility', type === 'sat' ? 'visible' : 'none');
-      document.getElementById('bm-dark').className = type === 'dark' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
-      document.getElementById('bm-sat').className = type === 'sat' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
-    }
-
-    function setMapDisplayMode(mode) { 
-      state.mapMode = mode; 
-      
-      document.getElementById('mode-h3').classList.remove('active');
-      document.getElementById('mode-sensor').classList.remove('active');
-      document.getElementById(`mode-${mode}`).classList.add('active');
-
-      if(isMapLoaded) {
-        if(mode === 'h3') {
-          map.setLayoutProperty('layer-heatmap', 'visibility', 'visible');
-          map.setLayoutProperty('layer-sensor', 'visibility', 'none');
-        } else {
-          map.setLayoutProperty('layer-heatmap', 'visibility', 'none');
-          map.setLayoutProperty('layer-sensor', 'visibility', 'visible');
-        }
-      }
-    }
-
-    function toggleBurnedArea() {
-      state.showBurnedArea = !state.showBurnedArea;
-      const toggle = document.getElementById('burned-toggle');
-      if (state.showBurnedArea) {
-        toggle.classList.add('active');
-        if(isMapLoaded) map.setLayoutProperty('layer-burned', 'visibility', 'visible');
-      } else {
-        toggle.classList.remove('active');
-        if(isMapLoaded) map.setLayoutProperty('layer-burned', 'visibility', 'none');
-      }
-      renderMapHotspots(state.selectedYear); 
-    }
-
-    function toggleHarmonization() {
-      state.harmonized = !state.harmonized;
-      const toggle = document.getElementById('harm-toggle');
-      if (state.harmonized) { toggle.classList.add('active'); document.getElementById('r2-score').textContent = 'Aktif'; } 
-      else { toggle.classList.remove('active'); document.getElementById('r2-score').textContent = 'Kapalı'; }
-      renderMapHotspots(state.selectedYear);
-    }
-
-    function selectScenario(scen) {
-      state.scenario = scen;
-      ['all', 'mugla2021', 'cukurova', 'viirs2012'].forEach(s => {
-        document.getElementById('scen-' + s).className = (s === scen) ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition' : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
-      });
-      if (!isMapLoaded) return;
-      if (scen === 'all') { map.flyTo({ center: [35.2, 38.9], zoom: 5.5 }); }
-      else if (scen === 'mugla2021') { map.flyTo({ center: [29.5, 36.85], zoom: 7.5 }); }
-      else if (scen === 'cukurova') { map.flyTo({ center: [37.5, 37.2], zoom: 7 }); }
-      else if (scen === 'viirs2012') { map.flyTo({ center: [32.8, 39.9], zoom: 6.5 }); }
-      renderMapHotspots(state.selectedYear);
-    }
-
-    // =========================================================================
-    // DİNAMİK VEKTÖR ÇİZİMİ (GEOJSON OLUŞTURMA)
-    // =========================================================================
+    // ---------------------------------------------------------
+    // 5. HARİTA ÇİZİMİ VE EKRAN (VIEWPORT) KPI HESAPLAMASI
+    // ---------------------------------------------------------
     function renderMapHotspots(year) {
-      if(!isMapLoaded) return;
+      if (!isMapLoaded) return;
       
       const yearData = mapDataCache[year] || [];
-      
-      // Filtreleme
-      const filtered = yearData.filter(h => {
-        if (state.scenario === 'mugla2021' && (h.lat > 38.5 || h.lon > 32.0)) return false; 
-        if (state.scenario === 'cukurova' && (h.lat > 38.0 || h.lon < 34.0)) return false; 
-        if (state.scenario === 'viirs2012' && (h.lat < 38.5 || h.lon < 31.0)) return false; 
-        if (state.aoiBounds) {
-          if (h.lon < state.aoiBounds.minLng || h.lon > state.aoiBounds.maxLng ||
-              h.lat < state.aoiBounds.minLat || h.lat > state.aoiBounds.maxLat) return false;
-        }
-        return true;
-      });
+      const filtered = yearData.filter(h => passesSpatialFilter(h.lat, h.lon));
 
-      // 1. ANA VERİ KAYNAĞINI GÜNCELLE (Heatmap ve Sensör Modları için)
-      // GPU saniyede binlerce noktayı okur, döngü veya HTML elementi oluşturmaya gerek yok!
       const features = filtered.map(d => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
@@ -517,13 +560,11 @@
 
       map.getSource('hotspots-data').setData({ type: 'FeatureCollection', features: features });
 
-      // 2. YANAN ALAN KAYNAĞINI GÜNCELLE
       if (state.showBurnedArea) {
-        // Yanan alanlar için çok hafif bir gridleme yaparak kaba çemberler oluşturuyoruz.
         const grid = {};
         filtered.forEach(d => {
-          const k = `${Math.round(d.lat*10)},${Math.round(d.lon*10)}`;
-          if(!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0 };
+          const k = `${Math.round(d.lat * 10)},${Math.round(d.lon * 10)}`;
+          if (!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0 };
           grid[k].count += 1;
         });
 
@@ -540,72 +581,249 @@
         map.getSource('burned-data').setData({ type: 'FeatureCollection', features: burnedFeatures });
       }
 
-      // KPI'LARI GÜNCELLE
       document.getElementById('timeline-label').textContent = `${year} Yılı Görüntüleniyor`;
-      let totalFrp = 0;
-      filtered.forEach(h => { totalFrp += h.frp; });
-      document.getElementById('kpi-count').textContent = filtered.length.toLocaleString('tr-TR'); 
-      document.getElementById('kpi-frp').textContent = filtered.length ? (totalFrp / filtered.length).toFixed(1) : '0.0';
+      updateViewportKPIs(year);
     }
 
-    // --- GRAFİKLER ---
+    // Sadece o an ekranda (monitörde) görünen noktaları sayar
+    function updateViewportKPIs(year) {
+      if (!isMapLoaded) return;
+      const yearData = mapDataCache[year] || [];
+      const bounds = map.getBounds();
+
+      const regionFiltered = yearData.filter(h => passesSpatialFilter(h.lat, h.lon));
+      const inViewport = regionFiltered.filter(h =>
+        h.lon >= bounds.getWest() && h.lon <= bounds.getEast() &&
+        h.lat >= bounds.getSouth() && h.lat <= bounds.getNorth()
+      );
+
+      let totalFrp = 0;
+      inViewport.forEach(h => { totalFrp += h.frp; });
+
+      document.getElementById('kpi-count').textContent = inViewport.length.toLocaleString('tr-TR');
+      document.getElementById('kpi-count-sub').textContent = `Bölge Toplamı: ${regionFiltered.length.toLocaleString('tr-TR')}`;
+      document.getElementById('kpi-frp').textContent = inViewport.length ? (totalFrp / inViewport.length).toFixed(1) : '0.0';
+    }
+
+    // ---------------------------------------------------------
+    // 6. SAĞ PANEL GRAFİKLERİ (ECHARTS)
+    // ---------------------------------------------------------
     let calendarChart, timeseriesChart;
+
     function initCharts() {
-      if(calendarChart) calendarChart.dispose();
-      if(timeseriesChart) timeseriesChart.dispose();
+      if (calendarChart) calendarChart.dispose();
+      if (timeseriesChart) timeseriesChart.dispose();
+
       calendarChart = echarts.init(document.getElementById('calendar-chart'));
       timeseriesChart = echarts.init(document.getElementById('timeseries-chart'));
-      window.addEventListener('resize', () => { calendarChart.resize(); timeseriesChart.resize(); });
+
+      // Matristeki bir hücreye tıklandığında o yıla git
+      calendarChart.on('click', (params) => {
+        if (params.data && state.availableYears[params.data[1]]) {
+          const clickedYear = state.availableYears[params.data[1]];
+          state.selectedYear = clickedYear;
+          document.getElementById('year-slider').value = clickedYear;
+          fetchYearlyData(clickedYear);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        calendarChart.resize();
+        timeseriesChart.resize();
+      });
     }
 
     function updateSummaryCharts() {
-      if(state.availableYears.length === 0) return;
+      if (state.availableYears.length === 0 || !calendarChart || !timeseriesChart) return;
+
+      // Seçili bölge veya AOI'ye göre özet kayıtları filtrele
+      const filteredSummary = summaryData.filter(s => passesSpatialFilter(s.lat, s.lon));
+
+      // Hızlı toplama için Map oluştur
+      const monthYearMap = {};
+      const yearlyHarmTotals = {};
+      const yearlyRawTotals = {};
+
+      state.availableYears.forEach(yr => {
+        yearlyHarmTotals[yr] = 0;
+        yearlyRawTotals[yr] = 0;
+      });
+
+      filteredSummary.forEach(r => {
+        const key = `${r.year}_${r.month}`;
+        const val = state.harmonized ? r.events : r.rawPixels;
+        monthYearMap[key] = (monthYearMap[key] || 0) + val;
+        yearlyHarmTotals[r.year] = (yearlyHarmTotals[r.year] || 0) + r.events;
+        yearlyRawTotals[r.year] = (yearlyRawTotals[r.year] || 0) + r.rawPixels;
+      });
+
       const heatmapData = [];
-      const ramp = ['#ffefa8', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'];
-      
+      let maxCell = 50;
+
       state.availableYears.forEach((yr, yIdx) => {
         for (let m = 1; m <= 12; m++) {
-          const monthlyRecords = summaryData.filter(s => s.year === yr && s.month === m);
-          const val = monthlyRecords.reduce((sum, r) => sum + r.events, 0);
+          const val = monthYearMap[`${yr}_${m}`] || 0;
+          if (val > maxCell) maxCell = val;
           heatmapData.push([m - 1, yIdx, val]);
         }
       });
 
+      const ramp = ['#1C1C1E', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'];
+
       calendarChart.setOption({
-        grid: { top: 0, bottom: 20, left: 35, right: 0 },
-        xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        yAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        visualMap: { show: false, min: 0, max: 200, inRange: { color: ramp } },
-        series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#1C1C1E', borderWidth: 1, borderRadius: 2 } }]
+        tooltip: {
+          position: 'top',
+          backgroundColor: 'rgba(28, 28, 30, 0.92)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          textStyle: { color: '#fff', fontSize: 11 },
+          formatter: (p) => {
+            const yr = state.availableYears[p.data[1]];
+            const mo = MONTHS_TR[p.data[0]];
+            return `<b>${mo} ${yr}</b><br/>${state.harmonized ? 'Uyumlu Olay' : 'Ham Piksel'}: <b>${p.data[2].toLocaleString('tr-TR')}</b>`;
+          }
+        },
+        grid: { top: 6, bottom: 22, left: 36, right: 6 },
+        xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 }, axisLine: { show: false }, axisTick: { show: false } },
+        yAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 9 }, axisLine: { show: false }, axisTick: { show: false } },
+        visualMap: { show: false, min: 0, max: Math.min(maxCell, 1500), inRange: { color: ramp } },
+        series: [{
+          type: 'heatmap',
+          data: heatmapData,
+          itemStyle: { borderColor: '#18181A', borderWidth: 1.5, borderRadius: 2 }
+        }]
       });
 
-      const yearlyCounts = state.availableYears.map(yr => { return summaryData.filter(s => s.year === yr).reduce((sum, r) => sum + r.events, 0); });
+      const harmSeries = state.availableYears.map(yr => yearlyHarmTotals[yr] || 0);
+      const rawSeries = state.availableYears.map(yr => yearlyRawTotals[yr] || 0);
+
       timeseriesChart.setOption({
-        grid: { top: 10, bottom: 20, left: 45, right: 0 },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(28, 28, 30, 0.92)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          textStyle: { color: '#fff', fontSize: 11 }
+        },
+        grid: { top: 12, bottom: 22, left: 45, right: 10 },
         xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        series: [{ type: 'line', data: yearlyCounts, smooth: true, symbol: 'none', lineStyle: { color: '#FF9500', width: 3 }, areaStyle: { color: 'rgba(255, 149, 0, 0.1)' } }]
+        yAxis: {
+          type: 'value',
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+          axisLabel: { color: '#8E8E93', fontSize: 10, formatter: (v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v }
+        },
+        series: [
+          {
+            name: 'Ham Piksel',
+            type: 'line',
+            data: rawSeries,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { color: '#FF3B30', width: state.harmonized ? 1.5 : 2.5, type: state.harmonized ? 'dashed' : 'solid' }
+          },
+          {
+            name: 'Uyumlu Olay',
+            type: 'line',
+            data: harmSeries,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { color: '#FF9500', width: state.harmonized ? 2.8 : 1.5 },
+            areaStyle: { color: 'rgba(255, 149, 0, 0.14)' }
+          }
+        ]
       });
     }
 
-    // --- ETKİLEŞİMLER ---
+    // ---------------------------------------------------------
+    // 7. ARAYÜZ ETKİLEŞİM FONKSİYONLARI
+    // ---------------------------------------------------------
+    function setBaseMap(type) {
+      if (!isMapLoaded) return;
+      map.setLayoutProperty('sat-layer', 'visibility', type === 'sat' ? 'visible' : 'none');
+      document.getElementById('bm-dark').className = type === 'dark' ? 'text-[10px] bg-white/20 px-2.5 py-1 rounded-md text-white font-medium transition' : 'text-[10px] px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition';
+      document.getElementById('bm-sat').className = type === 'sat' ? 'text-[10px] bg-white/20 px-2.5 py-1 rounded-md text-white font-medium transition' : 'text-[10px] px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition';
+    }
+
+    function setMapDisplayMode(mode) { 
+      state.mapMode = mode; 
+      document.getElementById('mode-h3').classList.toggle('active', mode === 'h3');
+      document.getElementById('mode-sensor').classList.toggle('active', mode === 'sensor');
+      document.getElementById('legend-heatmap').classList.toggle('hidden', mode !== 'h3');
+      document.getElementById('legend-sensor').classList.toggle('hidden', mode !== 'sensor');
+
+      if (isMapLoaded) {
+        map.setLayoutProperty('layer-heatmap', 'visibility', mode === 'h3' ? 'visible' : 'none');
+        map.setLayoutProperty('layer-sensor', 'visibility', mode === 'sensor' ? 'visible' : 'none');
+      }
+    }
+
+    function toggleBurnedArea() {
+      state.showBurnedArea = !state.showBurnedArea;
+      document.getElementById('burned-toggle').classList.toggle('active', state.showBurnedArea);
+      if (isMapLoaded) {
+        map.setLayoutProperty('layer-burned', 'visibility', state.showBurnedArea ? 'visible' : 'none');
+      }
+      renderMapHotspots(state.selectedYear); 
+    }
+
+    function toggleHarmonization() {
+      state.harmonized = !state.harmonized;
+      const toggle = document.getElementById('harm-toggle');
+      const r2 = document.getElementById('r2-score');
+      const badge = document.getElementById('matrix-mode-badge');
+
+      if (state.harmonized) {
+        toggle.classList.add('active');
+        r2.textContent = 'Aktif — Kantil & H3 Kalibrasyonu';
+        r2.className = 'text-[11px] text-apple-green font-medium mt-0.5';
+        badge.textContent = 'Uyumlu Olay';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange font-medium';
+        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.45, 7, 0.85, 10, 1.6]);
+      } else {
+        toggle.classList.remove('active');
+        r2.textContent = 'Kapalı — Ham Piksel Görünümü';
+        r2.className = 'text-[11px] text-apple-red font-medium mt-0.5';
+        badge.textContent = 'Ham Piksel';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-red/20 text-apple-red font-medium';
+        if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.8, 7, 1.4, 10, 2.5]);
+      }
+      updateSummaryCharts();
+      renderMapHotspots(state.selectedYear);
+    }
+
+    function selectScenario(scen) {
+      state.scenario = scen;
+      ['all', 'mugla2021', 'cukurova', 'viirs2012'].forEach(s => {
+        document.getElementById('scen-' + s).className = (s === scen)
+          ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/10 transition font-medium'
+          : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
+      });
+      if (!isMapLoaded) return;
+      if (scen === 'all') map.flyTo({ center: [35.2, 38.9], zoom: 5.6 });
+      else if (scen === 'mugla2021') map.flyTo({ center: [29.2, 36.9], zoom: 7.3 });
+      else if (scen === 'cukurova') map.flyTo({ center: [37.5, 37.2], zoom: 7.0 });
+      else if (scen === 'viirs2012') map.flyTo({ center: [33.5, 39.8], zoom: 6.5 });
+
+      renderMapHotspots(state.selectedYear);
+      updateSummaryCharts();
+    }
+
     function onYearSliderInput(val) { 
-      const year = parseInt(val);
+      const year = parseInt(val, 10);
       state.selectedYear = year; 
-      document.getElementById('timeline-label').textContent = `${year} Yılı İsteniyor...`;
+      document.getElementById('timeline-label').textContent = `${year} Yılı Yükleniyor...`;
       fetchYearlyData(year); 
     }
     
     function togglePlayTimeline() {
-      if(state.availableYears.length === 0) return;
+      if (state.availableYears.length === 0) return;
       state.playing = !state.playing;
       document.getElementById('play-btn').textContent = state.playing ? '⏸' : '▶';
       
       if (state.playing) {
         state.playTimer = setInterval(() => {
           let currIdx = state.availableYears.indexOf(state.selectedYear);
-          if (currIdx >= state.availableYears.length - 1) state.selectedYear = state.availableYears[0];
-          else state.selectedYear = state.availableYears[currIdx + 1];
+          state.selectedYear = (currIdx >= state.availableYears.length - 1)
+            ? state.availableYears[0]
+            : state.availableYears[currIdx + 1];
           document.getElementById('year-slider').value = state.selectedYear;
           fetchYearlyData(state.selectedYear);
         }, 1200); 
@@ -614,13 +832,14 @@
       }
     }
 
-    function startAOIDraw() { drawingAOI = true; document.getElementById('aoi-banner').classList.remove('hidden'); }
+    function startAOIDraw() { drawingAOI = true; aoiStart = null; document.getElementById('aoi-banner').classList.remove('hidden'); }
     function cancelAOIDraw() { drawingAOI = false; aoiStart = null; document.getElementById('aoi-banner').classList.add('hidden'); }
     function clearAOI() { 
       state.aoiBounds = null; 
       document.getElementById('clear-aoi-btn').classList.add('hidden'); 
-      map.getSource('aoi-source').setData({ type: 'FeatureCollection', features: [] });
+      if (isMapLoaded) map.getSource('aoi-source').setData({ type: 'FeatureCollection', features: [] });
       renderMapHotspots(state.selectedYear); 
+      updateSummaryCharts();
     }
 
     window.addEventListener('DOMContentLoaded', () => { 
