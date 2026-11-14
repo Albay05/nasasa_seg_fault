@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IGNIS // MODIS & VIIRS Komuta Merkezi</title>
+  <title>IGNIS // MODIS & VIIRS Komuta Merkezi (Vector/WebGL)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,16 +24,21 @@
     }
   </script>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- YENİ HARİTA MOTORU: MapLibre GL JS (WebGL / GPU Hızlandırmalı Vektör Mimari) -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
   <style>
     * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
     body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
     .ios-panel { background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); border-radius: 20px; }
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #1C1C1E; }
-    .leaflet-control-attribution { display: none !important; }
+    
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #000; }
+    /* MapLibre logolarını gizle (Opsiyonel) */
+    .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { display: none !important; }
+
     .segmented-control { background: rgba(118, 118, 128, 0.24); padding: 2px; border-radius: 8px; display: flex; }
     .segmented-btn { flex: 1; text-align: center; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; color: #EBEBF5; transition: all 0.2s ease; cursor: pointer; }
     .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
@@ -47,6 +52,7 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+    
     .loader { border: 2px solid rgba(255,255,255,0.1); border-left-color: #FF9500; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
@@ -58,7 +64,7 @@
 
   <div id="aoi-banner" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-30 ios-panel px-4 py-2 text-xs flex items-center gap-3">
     <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
-    <span>Haritada bir alan çizmek için tıklayın ve sürükleyin.</span>
+    <span>Haritada bir alan çizmek için başlangıç ve bitiş noktasına tıklayın.</span>
     <button onclick="cancelAOIDraw()" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
   </div>
 
@@ -67,7 +73,7 @@
       <div class="flex items-center justify-between mb-1">
         <div>
           <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
-          <p class="text-[11px] text-gray-400 font-medium mt-0.5">Yüksek Performans Motoru</p>
+          <p class="text-[11px] text-gray-400 font-medium mt-0.5">Vektörel (WebGL) Motoru</p>
         </div>
       </div>
 
@@ -105,6 +111,7 @@
       </div>
     </div>
 
+    <!-- HARİTA BİLGİLERİ -->
     <div class="ios-panel p-4 grid grid-cols-2 gap-3 flex-1">
       <div class="flex flex-col justify-between p-1 bg-white/5 rounded-lg px-3 py-2 relative">
         <div class="flex items-center justify-between text-[10px] font-medium text-gray-400 w-full">
@@ -171,7 +178,7 @@
 
   <script>
     // ---------------------------------------------------------
-    // HİBRİT MİMARİ + DİNAMİK KÜMELEME (BINNING) OPTİMİZASYONU
+    // HİBRİT MİMARİ + WEGL VEKTÖR (GPU) OPTİMİZASYONU
     // ---------------------------------------------------------
     const RAW_BASE_URL = 'https://raw.githubusercontent.com/Albay05/sistem_odevleri/main/public/data';
     const SUMMARY_JSON_URL = `${RAW_BASE_URL}/calendar_summary.json`;
@@ -184,11 +191,15 @@
     };
 
     const MONTHS_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    const COLOR_RAMPS = { YlOrRd: ['#ffefa8', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'] };
     
     const mapDataCache = {}; 
     let summaryData = []; 
+    let map = null;
+    let isMapLoaded = false;
+    let aoiStart = null;
+    let drawingAOI = false;
 
+    // --- CSV PARSER ---
     function parseCSV(csvText) {
       const lines = csvText.trim().split('\n');
       if(lines.length < 2) return [];
@@ -205,6 +216,7 @@
       return data;
     }
 
+    // --- ÖZET JSON ÇEKME (Grafikler İçin) ---
     async function fetchSummaryData() {
       try {
         const response = await fetch(SUMMARY_JSON_URL);
@@ -235,11 +247,11 @@
       }
     }
 
+    // --- CSV VERİ ÇEKME (Harita İçin Lazy Load) ---
     async function fetchYearlyData(year) {
       if(!year) return;
       
       if(mapDataCache[year]) {
-        updateMapKPIs(year);
         renderMapHotspots(year);
         return;
       }
@@ -271,7 +283,6 @@
 
         mapDataCache[year] = parsedYearData;
         document.getElementById('loading-indicator').classList.add('hidden');
-        updateMapKPIs(year);
         renderMapHotspots(year);
       } catch(error) {
         console.warn(error);
@@ -282,27 +293,133 @@
       }
     }
 
-    let map, baseTileLayer, hotspotLayerGroup, burnedLayerGroup, aoiRectLayer = null, drawingAOI = false, aoiStartLatLng = null;
-
+    // =========================================================================
+    // MAPLIBRE GL JS BAŞLATMA (GPU VEKTÖR MOTORU)
+    // =========================================================================
     function initMap() {
-      if(map) map.remove(); 
-      map = L.map('map', { center: [38.9, 35.2], zoom: 6, zoomControl: false, preferCanvas: true });
-      burnedLayerGroup = L.layerGroup().addTo(map); 
-      hotspotLayerGroup = L.layerGroup().addTo(map); 
-      setBaseMap('dark');
+      map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        center: [35.2, 38.9],
+        zoom: 5.5,
+        attributionControl: false
+      });
 
-      // OPTİMİZASYON: Zoom yapıldıkça veriyi tekrar, daha detaylı çiz (Dinamik Kümeleme için)
-      map.on('zoomend', () => { renderMapHotspots(state.selectedYear); });
+      map.on('load', () => {
+        isMapLoaded = true;
 
+        // --- 1. UYDU (SATELLITE) KATMANI (Gizli başlar) ---
+        map.addSource('esri-sat', {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256
+        });
+        map.addLayer({
+          id: 'sat-layer',
+          type: 'raster',
+          source: 'esri-sat',
+          layout: { visibility: 'none' }
+        });
+
+        // --- 2. VERİ KAYNAKLARI (GeoJSON) ---
+        map.addSource('hotspots-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addSource('aoi-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addSource('burned-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+        // --- 3. YANAN ALAN (Siyah Çemberler) ---
+        map.addLayer({
+          id: 'layer-burned',
+          type: 'circle',
+          source: 'burned-data',
+          layout: { visibility: 'none' },
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 5, 10, 40],
+            'circle-color': '#2C1B10',
+            'circle-opacity': 0.7,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#FF5500'
+          }
+        });
+
+        // --- 4. ISI HARİTASI KATMANI (Heatmap - GPU) ---
+        map.addLayer({
+          id: 'layer-heatmap',
+          type: 'heatmap',
+          source: 'hotspots-data',
+          layout: { visibility: 'visible' },
+          paint: {
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0, 100, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 3],
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0, 'rgba(0,0,0,0)', 0.2, '#fed976', 0.4, '#feb24c', 0.6, '#fd8d3c', 0.8, '#f03b20', 1, '#bd0026'
+            ],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 3, 9, 20],
+            'heatmap-opacity': 0.85
+          }
+        });
+
+        // --- 5. NOKTASAL SENSÖR KATMANI (Circle - GPU) ---
+        map.addLayer({
+          id: 'layer-sensor',
+          type: 'circle',
+          source: 'hotspots-data',
+          layout: { visibility: 'none' },
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 6],
+            'circle-color': [
+              'match', ['get', 'sensor'],
+              'MODIS', '#0A84FF',
+              'VIIRS', '#FF3B30',
+              '#FF9500' 
+            ],
+            'circle-opacity': 0.9
+          }
+        });
+
+        // --- 6. AOI (Seçim) KATMANI ---
+        map.addLayer({
+          id: 'layer-aoi',
+          type: 'fill',
+          source: 'aoi-source',
+          paint: {
+            'fill-color': '#0A84FF',
+            'fill-opacity': 0.2,
+            'fill-outline-color': '#0A84FF'
+          }
+        });
+
+        // Eğer veriler haritadan önce yüklendiyse şimdi çiz!
+        renderMapHotspots(state.selectedYear);
+      });
+
+      // AOI (Alan) Çizim Olayları (MapLibre'ye Uyarlanmış)
       map.on('click', (e) => {
         if (!drawingAOI) return;
-        if (!aoiStartLatLng) aoiStartLatLng = e.latlng;
-        else {
-          const bounds = L.latLngBounds(aoiStartLatLng, e.latlng);
-          if (aoiRectLayer) map.removeLayer(aoiRectLayer);
-          aoiRectLayer = L.rectangle(bounds, { color: '#0A84FF', weight: 2, fillColor: '#0A84FF', fillOpacity: 0.15 }).addTo(map);
-          state.aoiBounds = bounds;
-          drawingAOI = false; aoiStartLatLng = null;
+        if (!aoiStart) {
+          aoiStart = [e.lngLat.lng, e.lngLat.lat];
+        } else {
+          const aoiEnd = [e.lngLat.lng, e.lngLat.lat];
+          
+          state.aoiBounds = {
+            minLng: Math.min(aoiStart[0], aoiEnd[0]), maxLng: Math.max(aoiStart[0], aoiEnd[0]),
+            minLat: Math.min(aoiStart[1], aoiEnd[1]), maxLat: Math.max(aoiStart[1], aoiEnd[1])
+          };
+          
+          map.getSource('aoi-source').setData({
+            type: 'FeatureCollection',
+            features: [{
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [[
+                  [aoiStart[0], aoiStart[1]], [aoiEnd[0], aoiStart[1]], [aoiEnd[0], aoiEnd[1]], [aoiStart[0], aoiEnd[1]], [aoiStart[0], aoiStart[1]]
+                ]]
+              }
+            }]
+          });
+
+          drawingAOI = false; aoiStart = null;
           document.getElementById('aoi-banner').classList.add('hidden');
           document.getElementById('clear-aoi-btn').classList.remove('hidden');
           renderMapHotspots(state.selectedYear);
@@ -310,27 +427,42 @@
       });
     }
 
+    // --- ARAYÜZ KONTROLLERİ ---
     function setBaseMap(type) {
-      if (baseTileLayer) map.removeLayer(baseTileLayer);
-      const darkUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-      const satUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      baseTileLayer = L.tileLayer(type === 'dark' ? darkUrl : satUrl, { maxZoom: 18 }).addTo(map);
-      
+      if(!isMapLoaded) return;
+      map.setLayoutProperty('sat-layer', 'visibility', type === 'sat' ? 'visible' : 'none');
       document.getElementById('bm-dark').className = type === 'dark' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
       document.getElementById('bm-sat').className = type === 'sat' ? 'text-[10px] bg-white/20 px-2 py-1 rounded text-white font-medium transition' : 'text-[10px] px-2 py-1 rounded text-gray-400 hover:text-white transition';
     }
 
-    function updateSegmentedControl(groupId, activeId) {
-      ['h3', 'sensor'].forEach(id => {
-        const el = document.getElementById(`mode-${id}`);
-        if(el) { if(id === activeId) el.classList.add('active'); else el.classList.remove('active'); }
-      });
+    function setMapDisplayMode(mode) { 
+      state.mapMode = mode; 
+      
+      document.getElementById('mode-h3').classList.remove('active');
+      document.getElementById('mode-sensor').classList.remove('active');
+      document.getElementById(`mode-${mode}`).classList.add('active');
+
+      if(isMapLoaded) {
+        if(mode === 'h3') {
+          map.setLayoutProperty('layer-heatmap', 'visibility', 'visible');
+          map.setLayoutProperty('layer-sensor', 'visibility', 'none');
+        } else {
+          map.setLayoutProperty('layer-heatmap', 'visibility', 'none');
+          map.setLayoutProperty('layer-sensor', 'visibility', 'visible');
+        }
+      }
     }
-    
+
     function toggleBurnedArea() {
       state.showBurnedArea = !state.showBurnedArea;
       const toggle = document.getElementById('burned-toggle');
-      if (state.showBurnedArea) toggle.classList.add('active'); else toggle.classList.remove('active');
+      if (state.showBurnedArea) {
+        toggle.classList.add('active');
+        if(isMapLoaded) map.setLayoutProperty('layer-burned', 'visibility', 'visible');
+      } else {
+        toggle.classList.remove('active');
+        if(isMapLoaded) map.setLayoutProperty('layer-burned', 'visibility', 'none');
+      }
       renderMapHotspots(state.selectedYear); 
     }
 
@@ -342,105 +474,81 @@
       renderMapHotspots(state.selectedYear);
     }
 
-    function setMapDisplayMode(mode) { state.mapMode = mode; updateSegmentedControl(null, mode); renderMapHotspots(state.selectedYear); }
-
     function selectScenario(scen) {
       state.scenario = scen;
       ['all', 'mugla2021', 'cukurova', 'viirs2012'].forEach(s => {
-        const btn = document.getElementById('scen-' + s);
-        btn.className = (s === scen) ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition' : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
+        document.getElementById('scen-' + s).className = (s === scen) ? 'bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/5 transition' : 'bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition';
       });
-      if (scen === 'all') { map.flyTo([38.9, 35.2], 6); }
-      else if (scen === 'mugla2021') { map.flyTo([36.85, 29.5], 8); }
-      else if (scen === 'cukurova') { map.flyTo([37.2, 37.5], 7); }
-      else if (scen === 'viirs2012') { map.flyTo([39.9, 32.8], 6); }
+      if (!isMapLoaded) return;
+      if (scen === 'all') { map.flyTo({ center: [35.2, 38.9], zoom: 5.5 }); }
+      else if (scen === 'mugla2021') { map.flyTo({ center: [29.5, 36.85], zoom: 7.5 }); }
+      else if (scen === 'cukurova') { map.flyTo({ center: [37.5, 37.2], zoom: 7 }); }
+      else if (scen === 'viirs2012') { map.flyTo({ center: [32.8, 39.9], zoom: 6.5 }); }
       renderMapHotspots(state.selectedYear);
     }
 
     // =========================================================================
-    // OPTİMİZE EDİLMİŞ DİNAMİK RENDER MOTORU (IN-BROWSER SPATIAL BINNING)
+    // DİNAMİK VEKTÖR ÇİZİMİ (GEOJSON OLUŞTURMA)
     // =========================================================================
     function renderMapHotspots(year) {
-      hotspotLayerGroup.clearLayers();
-      burnedLayerGroup.clearLayers();
+      if(!isMapLoaded) return;
       
       const yearData = mapDataCache[year] || [];
-      const ramp = COLOR_RAMPS['YlOrRd'];
-
+      
       // Filtreleme
       const filtered = yearData.filter(h => {
         if (state.scenario === 'mugla2021' && (h.lat > 38.5 || h.lon > 32.0)) return false; 
         if (state.scenario === 'cukurova' && (h.lat > 38.0 || h.lon < 34.0)) return false; 
         if (state.scenario === 'viirs2012' && (h.lat < 38.5 || h.lon < 31.0)) return false; 
-        if (state.aoiBounds && !state.aoiBounds.contains([h.lat, h.lon])) return false;
+        if (state.aoiBounds) {
+          if (h.lon < state.aoiBounds.minLng || h.lon > state.aoiBounds.maxLng ||
+              h.lat < state.aoiBounds.minLat || h.lat > state.aoiBounds.maxLat) return false;
+        }
         return true;
       });
 
-      // ZOMA GÖRE DİNAMİK KÜMELEME (Spatial Aggregation)
-      // Yakından (zoom > 8) bakarken noktaları tek tek gösterir (100 veya 1000 çarpanı).
-      // Uzaktan (zoom <= 8) bakarken noktaları birleştirir, nesne sayısını 100 kat azaltır (10 çarpanı).
-      const zoom = map.getZoom();
-      let factor = 10; // ~11 km'lik kutular (Tüm Türkiye görünümü için)
-      if (zoom >= 8 && zoom < 10) factor = 100; // ~1.1 km'lik kutular (Bölgesel görünüm)
-      else if (zoom >= 10) factor = 10000; // Orijinal noktalara dönüş (Yerel görünüm)
+      // 1. ANA VERİ KAYNAĞINI GÜNCELLE (Heatmap ve Sensör Modları için)
+      // GPU saniyede binlerce noktayı okur, döngü veya HTML elementi oluşturmaya gerek yok!
+      const features = filtered.map(d => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
+        properties: { frp: d.frp, sensor: d.sensor }
+      }));
 
-      const grid = {};
-      filtered.forEach(d => {
-        const k = `${Math.round(d.lat * factor)},${Math.round(d.lon * factor)}`;
-        if(!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0, frp: 0, sensor: d.sensor };
-        grid[k].count += 1;
-        grid[k].frp += d.frp; // FRP'leri topluyoruz ki kümenin şiddeti belli olsun
-      });
+      map.getSource('hotspots-data').setData({ type: 'FeatureCollection', features: features });
 
-      const groupedData = Object.values(grid);
-
+      // 2. YANAN ALAN KAYNAĞINI GÜNCELLE
       if (state.showBurnedArea) {
-        groupedData.forEach(c => {
-          if (c.count > (factor === 10 ? 10 : 3)) { // Uzaktayken sadece büyük kümeleri çiz
-            L.circle([c.lat, c.lon], { radius: Math.sqrt(c.count) * 200, color: '#FF5500', weight: 1, fillColor: '#2C1B10', fillOpacity: 0.65 }).addTo(burnedLayerGroup);
+        // Yanan alanlar için çok hafif bir gridleme yaparak kaba çemberler oluşturuyoruz.
+        const grid = {};
+        filtered.forEach(d => {
+          const k = `${Math.round(d.lat*10)},${Math.round(d.lon*10)}`;
+          if(!grid[k]) grid[k] = { lat: d.lat, lon: d.lon, count: 0 };
+          grid[k].count += 1;
+        });
+
+        const burnedFeatures = [];
+        Object.values(grid).forEach(c => {
+          if (c.count > 5) {
+            burnedFeatures.push({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+              properties: { count: c.count }
+            });
           }
         });
+        map.getSource('burned-data').setData({ type: 'FeatureCollection', features: burnedFeatures });
       }
 
-      groupedData.forEach(d => {
-        // Kümenin şiddetine göre renk oranı
-        const frpScale = factor === 10 ? 500 : (factor === 100 ? 150 : 50); 
-        const ratio = Math.min(1, d.frp / frpScale);
-        let color = ramp[Math.floor(ratio * (ramp.length - 1))];
-        let radius = Math.max(3, Math.min(15, 3 + Math.sqrt(d.frp) * (zoom > 7 ? 0.8 : 0.3)));
-
-        if (state.mapMode === 'sensor') { 
-          color = (d.sensor.includes('MOD')) ? '#0A84FF' : '#FF3B30'; 
-          radius = color === '#0A84FF' ? 4 : 3; 
-          if(d.count > 5) radius += 2; // Yoğun noktalarda boyutu bir tık arttır
-        }
-
-        // On binlerce noktayı değil, sadece hesaplanmış gridleri (maksimum yüzlerce) çiziyoruz.
-        L.circleMarker([d.lat, d.lon], { radius, color: color, weight: 1, fillColor: color, fillOpacity: 0.75 }).addTo(hotspotLayerGroup);
-      });
-      
-      updateMapKPIs(year);
-    }
-
-    function updateMapKPIs(year) {
+      // KPI'LARI GÜNCELLE
       document.getElementById('timeline-label').textContent = `${year} Yılı Görüntüleniyor`;
-      const yearData = mapDataCache[year] || [];
-      const filtered = yearData.filter(h => {
-        if (state.scenario === 'mugla2021' && (h.lat > 38.5 || h.lon > 32.0)) return false; 
-        if (state.scenario === 'cukurova' && (h.lat > 38.0 || h.lon < 34.0)) return false; 
-        if (state.scenario === 'viirs2012' && (h.lat < 38.5 || h.lon < 31.0)) return false; 
-        if (state.aoiBounds && !state.aoiBounds.contains([h.lat, h.lon])) return false;
-        return true;
-      });
-
       let totalFrp = 0;
       filtered.forEach(h => { totalFrp += h.frp; });
-      
-      document.getElementById('kpi-count').textContent = filtered.length.toLocaleString('tr-TR'); // KPI hala gerçek sayıyı gösterir
+      document.getElementById('kpi-count').textContent = filtered.length.toLocaleString('tr-TR'); 
       document.getElementById('kpi-frp').textContent = filtered.length ? (totalFrp / filtered.length).toFixed(1) : '0.0';
     }
 
-    // GRAFİKLER 
+    // --- GRAFİKLER ---
     let calendarChart, timeseriesChart;
     function initCharts() {
       if(calendarChart) calendarChart.dispose();
@@ -453,6 +561,8 @@
     function updateSummaryCharts() {
       if(state.availableYears.length === 0) return;
       const heatmapData = [];
+      const ramp = ['#ffefa8', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'];
+      
       state.availableYears.forEach((yr, yIdx) => {
         for (let m = 1; m <= 12; m++) {
           const monthlyRecords = summaryData.filter(s => s.year === yr && s.month === m);
@@ -465,7 +575,7 @@
         grid: { top: 0, bottom: 20, left: 35, right: 0 },
         xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 } },
         yAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        visualMap: { show: false, min: 0, max: 200, inRange: { color: COLOR_RAMPS['YlOrRd'] } },
+        visualMap: { show: false, min: 0, max: 200, inRange: { color: ramp } },
         series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#1C1C1E', borderWidth: 1, borderRadius: 2 } }]
       });
 
@@ -478,6 +588,7 @@
       });
     }
 
+    // --- ETKİLEŞİMLER ---
     function onYearSliderInput(val) { 
       const year = parseInt(val);
       state.selectedYear = year; 
@@ -504,8 +615,13 @@
     }
 
     function startAOIDraw() { drawingAOI = true; document.getElementById('aoi-banner').classList.remove('hidden'); }
-    function cancelAOIDraw() { drawingAOI = false; aoiStartLatLng = null; document.getElementById('aoi-banner').classList.add('hidden'); }
-    function clearAOI() { map.removeLayer(aoiRectLayer); aoiRectLayer = null; state.aoiBounds = null; document.getElementById('clear-aoi-btn').classList.add('hidden'); renderMapHotspots(state.selectedYear); }
+    function cancelAOIDraw() { drawingAOI = false; aoiStart = null; document.getElementById('aoi-banner').classList.add('hidden'); }
+    function clearAOI() { 
+      state.aoiBounds = null; 
+      document.getElementById('clear-aoi-btn').classList.add('hidden'); 
+      map.getSource('aoi-source').setData({ type: 'FeatureCollection', features: [] });
+      renderMapHotspots(state.selectedYear); 
+    }
 
     window.addEventListener('DOMContentLoaded', () => { 
       initMap();
