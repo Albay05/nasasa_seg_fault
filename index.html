@@ -346,7 +346,7 @@
 
     function setBaseMap(type) {
       if (baseTileLayer) map.removeLayer(baseTileLayer);
-      const url = type === 'carto' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      const url = type === 'carto' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}' : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       baseTileLayer = L.tileLayer(url, { maxZoom: 18 }).addTo(map);
       
       document.getElementById('bm-carto').className = type === 'carto' ? 'text-[10px] text-white font-medium' : 'text-[10px] text-gray-500 hover:text-white';
