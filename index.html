@@ -79,7 +79,7 @@
     .segmented-btn { flex: 1; text-align: center; padding: 4px 6px; border-radius: 6px; font-size: 10.5px; font-weight: 500; color: #EBEBF5; transition: all 0.2s ease; cursor: pointer; white-space: nowrap; }
     .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
 
-    .month-pill { padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 500; color: #9CA3AF; cursor: pointer; transition: all 0.15s ease; }
+    .month-pill { padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 500; color: #9CA3AF; cursor: pointer; transition: all 0.15s ease; }
     .month-pill:hover:not(.disabled) { color: #FFF; background: rgba(255,255,255,0.08); }
     .month-pill.active { background: #FF9500; color: #000; font-weight: 600; }
     .month-pill.disabled { opacity: 0.28; cursor: not-allowed; text-decoration: line-through; }
@@ -106,6 +106,7 @@
     select.custom-select:focus { border-color: #FF9500; }
 
     .drawer-transition { transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease; }
+    .dock-transition { transition: right 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -120,18 +121,18 @@
 
   <div id="map"></div>
 
-  <!-- AOI Çizim Bilgilendirme Banner -->
-  <div id="aoi-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-[1000] ios-panel px-4 py-2 text-xs flex items-center gap-3">
+  <!-- AOI Çizim Bilgilendirme Banner (Sağ panele çarpmaması için harita alanına ortalı) -->
+  <div id="aoi-banner" class="hidden fixed top-16 left-4 z-[1000] ios-panel px-4 py-2 text-xs flex items-center gap-3">
     <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
     <span data-i18n="aoiPrompt">Haritada sol tık basılı tutarak dikdörtgen alan (Bounding Box) sürükleyin.</span>
     <button type="button" onclick="cancelAOIDraw()" data-i18n="cancel" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
   </div>
 
-  <!-- ERKEN UYARI ÜST ALARM BANNER (Tahmin katmanı aktif ve kritik risk varken görünür) -->
-  <div id="critical-alert-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-[950] ios-panel border-apple-red/50 px-4 py-2 text-xs flex items-center gap-3 pointer-events-auto">
-    <span class="w-2.5 h-2.5 rounded-full bg-apple-red animate-ping"></span>
-    <span id="critical-banner-text" class="text-white font-medium">KRİTİK YANGIN UYARISI: Yüksek yayılım riski tespit edildi.</span>
-    <button type="button" onclick="focusTopAlertZone()" data-i18n=" inspectBtn" class="text-apple-orange hover:underline font-semibold ml-1 cursor-pointer">Bölgeye Git →</button>
+  <!-- ERKEN UYARI ÜST ALARM BANNER (Sağ panelle çakışmaması için sol üst barın hemen altında hizalı) -->
+  <div id="critical-alert-banner" class="hidden fixed top-16 left-4 z-[950] ios-panel border-apple-red/50 px-3.5 py-2 text-xs flex items-center gap-2.5 pointer-events-auto max-w-[calc(100vw-450px)]">
+    <span class="w-2 h-2 rounded-full bg-apple-red animate-ping shrink-0"></span>
+    <span id="critical-banner-text" class="text-white font-medium truncate">KRİTİK YANGIN UYARISI: Yüksek yayılım riski tespit edildi.</span>
+    <button type="button" onclick="focusTopAlertZone()" data-i18n="inspectBtn" class="text-apple-orange hover:underline font-semibold ml-1 shrink-0 cursor-pointer">Bölgeye Git →</button>
   </div>
 
   <!-- SOL ÜST KOMUTA ÇUBUĞU -->
@@ -371,43 +372,6 @@
     </button>
   </div>
 
-  <!-- SOL ALT KOMPAKT YÜZER KPI BARI -->
-  <div class="fixed bottom-4 left-4 z-20 ios-panel px-4 py-2.5 flex items-center gap-4 pointer-events-auto">
-    <div class="flex flex-col">
-      <div class="flex items-center gap-1.5 text-[9.5px] font-semibold text-gray-400 uppercase">
-        <span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span>
-        <span data-i18n="kpiEventsTitle">RAPORLANAN OLAY</span>
-        <div id="loading-indicator" class="hidden ml-1"><span class="loader"></span></div>
-      </div>
-      <div class="flex items-baseline gap-2 mt-0.5">
-        <span id="kpi-count" class="text-xl font-bold text-white tabular-nums">0</span>
-        <span id="kpi-count-sub" class="text-[10px] text-gray-400">Ham Piksel: 0</span>
-      </div>
-    </div>
-    <div class="h-7 w-[1px] bg-white/10"></div>
-    <div class="flex flex-col">
-      <div class="flex items-center gap-1.5 text-[9.5px] font-semibold text-gray-400 uppercase">
-        <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span>
-        <span data-i18n="kpiFrpTitle">ORT. ENERJİ (FRP)</span>
-      </div>
-      <div class="flex items-baseline gap-2 mt-0.5">
-        <span id="kpi-frp" class="text-xl font-bold text-white tabular-nums">0.0</span>
-        <span id="kpi-frp-sub" class="text-[10px] text-gray-400">Bölge Ort: 0.0 MW</span>
-      </div>
-    </div>
-    <div class="h-7 w-[1px] bg-white/10"></div>
-    <div class="flex flex-col cursor-pointer" onclick="window.togglePopover('alert-popover', event)">
-      <div class="flex items-center gap-1.5 text-[9.5px] font-semibold text-gray-400 uppercase">
-        <span class="w-1.5 h-1.5 rounded-full bg-apple-red animate-pulse"></span>
-        <span data-i18n="kpiRiskTitle">RİSK ENDEKSİ (FWI)</span>
-      </div>
-      <div class="flex items-baseline gap-1.5 mt-0.5">
-        <span id="kpi-risk-val" class="text-lg font-bold text-apple-red tabular-nums">YÜKSEK</span>
-        <span id="kpi-risk-sub" class="text-[10px] text-gray-400">0 Kritik Uyarı</span>
-      </div>
-    </div>
-  </div>
-
   <!-- SAĞ ÜST ANALİTİK PANEL AÇ/KAPA (COLLAPSE) BUTONU -->
   <button type="button" onclick="toggleRightDrawer()" id="right-drawer-toggle" class="fixed top-4 right-4 z-[1000] ios-panel px-3.5 py-2 text-xs font-medium text-white hover:bg-white/10 transition flex items-center gap-2 pointer-events-auto cursor-pointer">
     <span class="w-2 h-2 rounded-full bg-apple-green"></span>
@@ -474,57 +438,103 @@
         </div>
       </div>
 
-      <div id="chart-legend-bar" class="flex items-center justify-center gap-3 bg-black/30 border border-white/5 rounded-md py-1 px-2 mb-1 text-[9.5px] text-gray-300 shrink-0"></div>
+      <div id="chart-legend-bar" class="flex items-center justify-center gap-2 bg-black/30 border border-white/5 rounded-md py-1 px-2 mb-1 text-[9px] text-gray-300 whitespace-nowrap overflow-hidden shrink-0"></div>
 
       <div id="timeseries-chart" class="w-full flex-1 min-h-0"></div>
     </div>
   </aside>
 
-  <!-- ALT ORTA ZAMAN ÇUBUĞU -->
-  <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[540px] z-20 ios-panel p-3 px-4 flex flex-col gap-1.5 pointer-events-auto">
-    <div class="flex justify-between items-center gap-2">
-      <button type="button" id="play-btn" onclick="togglePlayTimeline()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0 cursor-pointer">
-        <svg id="play-icon-svg" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      </button>
-      
-      <div class="text-center flex-1">
-        <span id="timeline-label" class="text-xs font-semibold text-white">2026 Yılı</span>
+  <!-- ALT BİRLEŞİK DOCK (KPI BARI VE ZAMAN ÇUBUĞU ASLA ÜST ÜSTE BİNMEZ) -->
+  <div id="bottom-dock" style="right: 436px;" class="fixed bottom-4 left-4 z-20 flex flex-wrap xl:flex-nowrap items-end justify-between gap-3 pointer-events-none dock-transition">
+    
+    <!-- SOL ALT KOMPAKT YÜZER KPI BARI -->
+    <div class="ios-panel px-3.5 py-2.5 flex items-center gap-3.5 pointer-events-auto shrink-0">
+      <div class="flex flex-col whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[9px] font-semibold text-gray-400 uppercase">
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span>
+          <span data-i18n="kpiEventsTitle">RAPORLANAN OLAY</span>
+          <div id="loading-indicator" class="hidden ml-1"><span class="loader"></span></div>
+        </div>
+        <div class="flex items-baseline gap-1.5 mt-0.5">
+          <span id="kpi-count" class="text-lg font-bold text-white tabular-nums">0</span>
+          <span id="kpi-count-sub" class="text-[9.5px] text-gray-400">Ham Piksel: 0</span>
+        </div>
       </div>
 
-      <!-- Varsayılan 2B Dik Görünüm Aktif -->
-      <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
-        <button type="button" onclick="setCameraView('3d')" id="cam-3d" data-i18n="cam3d" class="text-[10px] px-2 py-0.5 rounded text-gray-400 hover:text-white transition cursor-pointer">3B Arazi</button>
-        <button type="button" onclick="setCameraView('2d')" id="cam-2d" data-i18n="cam2d" class="text-[10px] bg-apple-orange text-black px-2 py-0.5 rounded font-semibold transition cursor-pointer">2B Dik</button>
+      <div class="h-7 w-[1px] bg-white/10 shrink-0"></div>
+
+      <div class="flex flex-col whitespace-nowrap">
+        <div class="flex items-center gap-1.5 text-[9px] font-semibold text-gray-400 uppercase">
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span>
+          <span data-i18n="kpiFrpTitle">ORT. ENERJİ (FRP)</span>
+        </div>
+        <div class="flex items-baseline gap-1.5 mt-0.5">
+          <span id="kpi-frp" class="text-lg font-bold text-white tabular-nums">0.0</span>
+          <span id="kpi-frp-sub" class="text-[9.5px] text-gray-400">Bölge Ort: 0.0 MW</span>
+        </div>
       </div>
 
-      <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
-        <button type="button" onclick="setBaseMap('dark')" id="bm-dark" data-i18n="bmDark" class="text-[10px] px-2 py-0.5 rounded text-gray-400 hover:text-white transition cursor-pointer">Koyu</button>
-        <button type="button" onclick="setBaseMap('sat')" id="bm-sat" data-i18n="bmSat" class="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-medium transition cursor-pointer">Uydu</button>
+      <div class="h-7 w-[1px] bg-white/10 shrink-0"></div>
+
+      <div class="flex flex-col whitespace-nowrap cursor-pointer" onclick="window.togglePopover('alert-popover', event)">
+        <div class="flex items-center gap-1.5 text-[9px] font-semibold text-gray-400 uppercase">
+          <span class="w-1.5 h-1.5 rounded-full bg-apple-red animate-pulse"></span>
+          <span data-i18n="kpiRiskTitle">RİSK ENDEKSİ (FWI)</span>
+        </div>
+        <div class="flex items-baseline gap-1.5 mt-0.5">
+          <span id="kpi-risk-val" class="text-base font-bold text-apple-red tabular-nums">YÜKSEK</span>
+          <span id="kpi-risk-sub" class="text-[9.5px] text-gray-400">0 Aktif Uyarı</span>
+        </div>
       </div>
     </div>
 
-    <div id="month-bar" class="flex items-center justify-between bg-black/30 px-1 py-0.5 rounded-lg border border-white/5">
-      <span onclick="setMonthFilter(0)" id="m-0" class="month-pill active">Tümü</span>
-      <span onclick="setMonthFilter(1)" id="m-1" class="month-pill">Oca</span>
-      <span onclick="setMonthFilter(2)" id="m-2" class="month-pill">Şub</span>
-      <span onclick="setMonthFilter(3)" id="m-3" class="month-pill">Mar</span>
-      <span onclick="setMonthFilter(4)" id="m-4" class="month-pill">Nis</span>
-      <span onclick="setMonthFilter(5)" id="m-5" class="month-pill">May</span>
-      <span onclick="setMonthFilter(6)" id="m-6" class="month-pill">Haz</span>
-      <span onclick="setMonthFilter(7)" id="m-7" class="month-pill">Tem</span>
-      <span onclick="setMonthFilter(8)" id="m-8" class="month-pill">Ağu</span>
-      <span onclick="setMonthFilter(9)" id="m-9" class="month-pill">Eyl</span>
-      <span onclick="setMonthFilter(10)" id="m-10" class="month-pill">Eki</span>
-      <span onclick="setMonthFilter(11)" id="m-11" class="month-pill">Kas</span>
-      <span onclick="setMonthFilter(12)" id="m-12" class="month-pill">Ara</span>
-    </div>
+    <!-- SAĞ/ORTA ZAMAN ÇUBUĞU (Esnek Genişlik) -->
+    <footer class="flex-1 min-w-[360px] max-w-[520px] ios-panel p-2.5 px-3.5 flex flex-col gap-1.5 pointer-events-auto">
+      <div class="flex justify-between items-center gap-2">
+        <button type="button" id="play-btn" onclick="togglePlayTimeline()" class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0 cursor-pointer">
+          <svg id="play-icon-svg" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        
+        <div class="text-center flex-1 truncate">
+          <span id="timeline-label" class="text-xs font-semibold text-white">2026 Yılı</span>
+        </div>
 
-    <div class="flex items-center gap-2.5">
-      <span id="min-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2000</span>
-      <input id="year-slider" type="range" min="2000" max="2026" value="2026" oninput="onYearSliderInput(this.value)" class="flex-1" />
-      <span id="max-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2026</span>
-    </div>
-  </footer>
+        <!-- Varsayılan 2B Dik Görünüm Aktif -->
+        <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 shrink-0">
+          <button type="button" onclick="setCameraView('3d')" id="cam-3d" data-i18n="cam3d" class="text-[10px] px-2 py-0.5 rounded text-gray-400 hover:text-white transition cursor-pointer">3B Arazi</button>
+          <button type="button" onclick="setCameraView('2d')" id="cam-2d" data-i18n="cam2d" class="text-[10px] bg-apple-orange text-black px-2 py-0.5 rounded font-semibold transition cursor-pointer">2B Dik</button>
+        </div>
+
+        <div class="flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 shrink-0">
+          <button type="button" onclick="setBaseMap('dark')" id="bm-dark" data-i18n="bmDark" class="text-[10px] px-2 py-0.5 rounded text-gray-400 hover:text-white transition cursor-pointer">Koyu</button>
+          <button type="button" onclick="setBaseMap('sat')" id="bm-sat" data-i18n="bmSat" class="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-medium transition cursor-pointer">Uydu</button>
+        </div>
+      </div>
+
+      <div id="month-bar" class="flex items-center justify-between bg-black/30 px-1 py-0.5 rounded-lg border border-white/5">
+        <span onclick="setMonthFilter(0)" id="m-0" class="month-pill active">Tümü</span>
+        <span onclick="setMonthFilter(1)" id="m-1" class="month-pill">Oca</span>
+        <span onclick="setMonthFilter(2)" id="m-2" class="month-pill">Şub</span>
+        <span onclick="setMonthFilter(3)" id="m-3" class="month-pill">Mar</span>
+        <span onclick="setMonthFilter(4)" id="m-4" class="month-pill">Nis</span>
+        <span onclick="setMonthFilter(5)" id="m-5" class="month-pill">May</span>
+        <span onclick="setMonthFilter(6)" id="m-6" class="month-pill">Haz</span>
+        <span onclick="setMonthFilter(7)" id="m-7" class="month-pill">Tem</span>
+        <span onclick="setMonthFilter(8)" id="m-8" class="month-pill">Ağu</span>
+        <span onclick="setMonthFilter(9)" id="m-9" class="month-pill">Eyl</span>
+        <span onclick="setMonthFilter(10)" id="m-10" class="month-pill">Eki</span>
+        <span onclick="setMonthFilter(11)" id="m-11" class="month-pill">Kas</span>
+        <span onclick="setMonthFilter(12)" id="m-12" class="month-pill">Ara</span>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <span id="min-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2000</span>
+        <input id="year-slider" type="range" min="2000" max="2026" value="2026" oninput="onYearSliderInput(this.value)" class="flex-1" />
+        <span id="max-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2026</span>
+      </div>
+    </footer>
+
+  </div>
 
   <script>
     // ---------------------------------------------------------
@@ -629,8 +639,8 @@
         legSeasPeak: 'Zirve Yangın Dönemi',
         legSeasAvg: 'Çok Yıllı Ay Ort.',
         legSeasYear: 'Yılı Aktivitesi',
-        legFcExpected: 'Tahmini Yangın Olayı',
-        legFcBand: '%95 Risk & Güven Bandı',
+        legFcExpected: 'Tahmini Olay',
+        legFcBand: '%95 Güven Bandı',
         legFcHist: 'Tarihsel Baz',
         riskExtreme: 'KRİTİK',
         riskHigh: 'YÜKSEK',
@@ -731,9 +741,9 @@
         legSeasPeak: 'Peak Fire Season',
         legSeasAvg: 'Multi-Year Monthly Avg',
         legSeasYear: 'Activity',
-        legFcExpected: 'Predicted Fire Events',
-        legFcBand: '95% Risk & Confidence Band',
-        legFcHist: 'Historical Baseline',
+        legFcExpected: 'Predicted Events',
+        legFcBand: '95% Conf. Band',
+        legFcHist: 'Hist. Baseline',
         riskExtreme: 'EXTREME',
         riskHigh: 'HIGH',
         riskMod: 'MODERATE',
@@ -896,6 +906,7 @@
     window.toggleRightDrawer = function() {
       state.rightDrawerOpen = !state.rightDrawerOpen;
       const drawer = document.getElementById('right-drawer');
+      const dock = document.getElementById('bottom-dock');
       const chevron = document.getElementById('drawer-chevron');
       const label = document.getElementById('drawer-btn-label');
 
@@ -903,6 +914,7 @@
         drawer.style.transform = 'translateX(0)';
         drawer.style.opacity = '1';
         drawer.style.pointerEvents = 'auto';
+        if (dock) dock.style.right = '436px';
         chevron.style.transform = 'rotate(0deg)';
         label.setAttribute('data-i18n', 'hideAnalytics');
         label.textContent = t('hideAnalytics');
@@ -914,6 +926,7 @@
         drawer.style.transform = 'translateX(440px)';
         drawer.style.opacity = '0';
         drawer.style.pointerEvents = 'none';
+        if (dock) dock.style.right = '16px';
         chevron.style.transform = 'rotate(180deg)';
         label.setAttribute('data-i18n', 'showAnalytics');
         label.textContent = t('showAnalytics');
@@ -1640,6 +1653,7 @@
       computeAndRenderEarlyWarnings(filtered);
 
       if (state.chartMode === 'forecast' && state.cachedChartData && timeseriesChart) {
+        updateChartLegendBar();
         timeseriesChart.setOption(buildChartOptionForMode('forecast', state.cachedChartData), true);
       }
     }
@@ -1674,7 +1688,6 @@
       const fwi = computeFwiScore();
       state.weatherSim.fwiScore = fwi;
 
-      // 0.25 derecelik ızgara hücrelerinde aktif ve tarihsel kümelenme
       const cellMap = {};
       filteredHotspots.forEach(h => {
         const cLat = +(Math.round(h.lat * 4) / 4).toFixed(2);
@@ -1729,12 +1742,12 @@
       if (fwi >= 65) {
         riskLabel = t('riskExtreme');
         badgeCls = 'text-[10px] px-2 py-0.5 rounded bg-apple-red/25 text-apple-red border border-apple-red/40 font-bold';
-        kpiRiskVal.className = 'text-lg font-bold text-apple-red tabular-nums';
+        kpiRiskVal.className = 'text-base font-bold text-apple-red tabular-nums';
       } else if (fwi >= 42) {
         riskLabel = t('riskHigh');
-        kpiRiskVal.className = 'text-lg font-bold text-apple-orange tabular-nums';
+        kpiRiskVal.className = 'text-base font-bold text-apple-orange tabular-nums';
       } else {
-        kpiRiskVal.className = 'text-lg font-bold text-apple-green tabular-nums';
+        kpiRiskVal.className = 'text-base font-bold text-apple-green tabular-nums';
       }
 
       fwiBadge.className = badgeCls;
@@ -1742,7 +1755,6 @@
       kpiRiskVal.textContent = `${riskLabel} (${fwi})`;
       kpiRiskSub.textContent = isTr ? `${criticalCount} Aktif Uyarı` : `${criticalCount} Active Alerts`;
 
-      // Erken Uyarı Listesini Renderla
       const listEl = document.getElementById('early-warning-list');
       if (listEl) {
         if (alerts.length === 0) {
@@ -1768,7 +1780,6 @@
         }
       }
 
-      // Harita Katmanlarını Güncelle
       if (isMapLoaded && map.getSource('forecast-zones-data')) {
         const zoneFeatures = alerts.map(a => ({
           type: 'Feature',
@@ -1817,7 +1828,7 @@
             <span class="text-right font-bold text-apple-red">%${alertItem.prob} (${alertItem.level === 'EXTREME' ? t('riskExtreme') : t('riskHigh')})</span>
             <span class="text-gray-400">${t('spreadRadiusLbl')}:</span>
             <span class="text-right font-semibold text-apple-orange">${alertItem.spreadKm} km (${state.weatherSim.windDir})</span>
-            <span class="text-gray-400">${isTr ? 'Küme Макс. FRP:' : 'Cluster Max FRP:'}</span>
+            <span class="text-gray-400">${isTr ? 'Küme Maks. FRP:' : 'Cluster Max FRP:'}</span>
             <span class="text-right text-gray-200">${alertItem.maxFrp.toFixed(1)} MW (${alertItem.count} ${isTr ? 'Olay' : 'Events'})</span>
             <span class="text-gray-400">FWI / ${isTr ? 'Rüzgar:' : 'Wind:'}</span>
             <span class="text-right text-gray-300">FWI ${state.weatherSim.fwiScore} (${state.weatherSim.windSpeed} km/h)</span>
@@ -2199,9 +2210,9 @@
 
       if (state.chartMode === 'trend') {
         bar.innerHTML = `
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-1 rounded bg-[#FF9500] inline-block"></span> ${t('legTrendHarm')}</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-[#FF3B30] inline-block"></span> ${t('legTrendRaw')}</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-[#0A84FF] inline-block"></span> ${t('legTrendAvg')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded bg-[#FF9500] inline-block"></span> ${t('legTrendHarm')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-[#FF3B30] inline-block"></span> ${t('legTrendRaw')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-[#0A84FF] inline-block"></span> ${t('legTrendAvg')}</span>
         `;
       } else if (state.chartMode === 'anomaly') {
         bar.innerHTML = `
@@ -2210,15 +2221,15 @@
         `;
       } else if (state.chartMode === 'seasonal') {
         bar.innerHTML = `
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#FF3B30]/80 inline-block"></span> ${t('legSeasPeak')}</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-white/30 inline-block"></span> ${t('legSeasAvg')}</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-1 rounded bg-[#FF9500] inline-block"></span> ${state.selectedYear} ${t('legSeasYear')}</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-[#FF3B30]/80 inline-block"></span> ${t('legSeasPeak')}</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-white/30 inline-block"></span> ${t('legSeasAvg')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded bg-[#FF9500] inline-block"></span> ${state.selectedYear} ${t('legSeasYear')}</span>
         `;
       } else {
         bar.innerHTML = `
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-1 rounded bg-[#FF3B30] inline-block"></span> ${t('legFcExpected')} (FWI ${state.weatherSim.fwiScore})</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#FF9500]/30 border border-[#FF9500] inline-block"></span> ${t('legFcBand')}</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-gray-400 inline-block"></span> ${t('legFcHist')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded bg-[#FF3B30] inline-block"></span> ${t('legFcExpected')} (FWI ${state.weatherSim.fwiScore})</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-[#FF9500]/30 border border-[#FF9500] inline-block"></span> ${t('legFcBand')}</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-gray-400 inline-block"></span> ${t('legFcHist')}</span>
         `;
       }
     }
@@ -2336,7 +2347,6 @@
           ]
         };
       } else {
-        // 12 Aylık Yangın Risk Tahmini & %95 Güven Aralığı Projeksiyonu
         const fwiMultiplier = 0.75 + (state.weatherSim.fwiScore / 95.0);
         const histBaseline = mNames.map((_, idx) =>
           monthObservedYearCounts[idx] > 0 ? Math.round(monthTotalsAllYears[idx] / monthObservedYearCounts[idx]) : 0
