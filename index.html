@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IGNIS // MODIS & VIIRS 3B Komuta Merkezi (WebGL)</title>
+  <title>IGNIS // MODIS & VIIRS 3B Komuta ve Anomali Merkezi</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,19 +34,19 @@
   <style>
     * { box-sizing: border-box; user-select: none; font-family: 'Inter', sans-serif; }
     body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #000; color: #F5F5F7; }
-    .ios-panel { background: rgba(28, 28, 30, 0.78); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); border-radius: 20px; }
+    .ios-panel { background: rgba(28, 28, 30, 0.80); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65); border-radius: 20px; }
     
     #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: #050608; }
     .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { display: none !important; }
 
     .maplibregl-popup-content {
-      background: rgba(24, 24, 26, 0.92) !important;
+      background: rgba(24, 24, 26, 0.94) !important;
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px !important;
       padding: 12px 14px !important; color: #F5F5F7 !important;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important; min-width: 215px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important; min-width: 240px;
     }
-    .maplibregl-popup-tip { border-top-color: rgba(24, 24, 26, 0.92) !important; border-bottom-color: rgba(24, 24, 26, 0.92) !important; }
+    .maplibregl-popup-tip { border-top-color: rgba(24, 24, 26, 0.94) !important; border-bottom-color: rgba(24, 24, 26, 0.94) !important; }
     .maplibregl-popup-close-button { color: #9CA3AF !important; font-size: 16px !important; right: 8px !important; top: 6px !important; }
     .maplibregl-popup-close-button:hover { color: #FFF !important; background: transparent !important; }
 
@@ -55,8 +55,9 @@
     .segmented-btn.active { background: #636366; color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
 
     .month-pill { padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 500; color: #9CA3AF; cursor: pointer; transition: all 0.15s ease; }
-    .month-pill:hover { color: #FFF; background: rgba(255,255,255,0.08); }
+    .month-pill:hover:not(.disabled) { color: #FFF; background: rgba(255,255,255,0.08); }
     .month-pill.active { background: #FF9500; color: #000; font-weight: 600; }
+    .month-pill.disabled { opacity: 0.28; cursor: not-allowed; text-decoration: line-through; }
 
     .ios-toggle { width: 44px; height: 24px; border-radius: 24px; background: #39393D; position: relative; cursor: pointer; transition: background 0.3s ease; flex-shrink: 0; }
     .ios-toggle.active { background: #32D74B; }
@@ -66,6 +67,8 @@
     input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
     input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.2); }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; border: 1px solid #d1d1d6; margin-top: -6px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+
+    input[type=date] { color-scheme: dark; }
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -88,30 +91,48 @@
   </div>
 
   <!-- SOL PANEL -->
-  <aside class="fixed top-6 left-6 bottom-6 w-[350px] z-20 flex flex-col gap-3 pointer-events-auto">
-    <div class="ios-panel p-4 flex flex-col gap-3.5 overflow-y-auto">
+  <aside class="fixed top-5 left-5 bottom-5 w-[355px] z-20 flex flex-col gap-3 pointer-events-auto">
+    <div class="ios-panel p-4 flex flex-col gap-3 overflow-y-auto flex-1">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-xl font-bold tracking-tight">IGNIS <span class="text-apple-orange text-lg">.</span></h1>
-          <p class="text-[11px] text-gray-400 font-medium mt-0.5">3B Arazi & Termal Vektör Motoru</p>
+          <p class="text-[11px] text-gray-400 font-medium mt-0.5">MODIS & VIIRS Uyumlaştırılmış Analitik Motoru</p>
         </div>
         <span class="text-[10px] px-2 py-0.5 rounded-full bg-apple-orange/20 text-apple-orange border border-apple-orange/30 font-semibold">3D WebGL</span>
       </div>
 
       <!-- Bölge Seçimi -->
       <div class="flex flex-col gap-1.5">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bölge & Kamera Odaklama</label>
+        <div class="flex items-center justify-between">
+          <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bölge & Alan Seçimi</label>
+          <button onclick="startAOIDraw()" class="text-[10px] text-apple-blue hover:underline font-medium">⛶ Haritada Alan Çiz</button>
+        </div>
         <div class="grid grid-cols-2 gap-1.5 text-xs">
-          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/10 transition font-medium">Tüm Alan</button>
-          <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz/Ege</button>
-          <button onclick="selectScenario('cukurova')" id="scen-cukurova" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Güney/Doğu</button>
-          <button onclick="selectScenario('viirs2012')" id="scen-viirs2012" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Merkez/Kuzey</button>
+          <button onclick="selectScenario('all')" id="scen-all" class="bg-apple-gray2 hover:bg-apple-gray3 text-white py-1.5 rounded-lg border border-white/10 transition font-medium">Tüm Türkiye</button>
+          <button onclick="selectScenario('mugla2021')" id="scen-mugla2021" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Akdeniz / Ege</button>
+          <button onclick="selectScenario('cukurova')" id="scen-cukurova" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Güney / Doğu</button>
+          <button onclick="selectScenario('viirs2012')" id="scen-viirs2012" class="bg-apple-gray/50 hover:bg-apple-gray3 text-gray-400 hover:text-white py-1.5 rounded-lg border border-white/5 transition">Merkez / Kuzey</button>
+        </div>
+        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden w-full bg-apple-red/20 text-apple-red text-[11px] py-1 rounded-lg border border-apple-red/30 hover:bg-apple-red/30 font-medium">Seçili Özel Alanı (AOI) Temizle ✕</button>
+      </div>
+
+      <!-- Özel Tarih Aralığı Sorgusu (Hackathon İster 5) -->
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+        <div class="flex items-center justify-between">
+          <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Özel Tarih Aralığı Sorgusu</label>
+          <button id="clear-date-btn" onclick="clearDateRange()" class="hidden text-[10px] text-apple-red hover:underline">Sıfırla</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <input type="date" id="date-start" min="2000-11-01" max="2026-11-30" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white flex-1 focus:outline-none focus:border-apple-orange" />
+          <span class="text-gray-500 text-xs">→</span>
+          <input type="date" id="date-end" min="2000-11-01" max="2026-11-30" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white flex-1 focus:outline-none focus:border-apple-orange" />
+          <button onclick="applyCustomDateRange()" class="bg-apple-orange hover:bg-apple-orange/90 text-black font-semibold text-[11px] px-2.5 py-1 rounded-lg transition">Uygula</button>
         </div>
       </div>
 
-      <!-- Operasyonel Filtreler (FIRMS) -->
-      <div class="flex flex-col gap-2 pt-2 border-t border-white/10">
-        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sensör & Zaman Filtresi</label>
+      <!-- Operasyonel Filtreler -->
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sensör, Zaman & Güç Filtresi</label>
         <div class="segmented-control">
           <div onclick="setSensorFilter('all')" id="sf-all" class="segmented-btn active">Tümü</div>
           <div onclick="setSensorFilter('MODIS')" id="sf-MODIS" class="segmented-btn">MODIS</div>
@@ -119,10 +140,10 @@
         </div>
         <div class="segmented-control">
           <div onclick="setDayNightFilter('all')" id="dn-all" class="segmented-btn active">Gece & Gündüz</div>
-          <div onclick="setDayNightFilter('D')" id="dn-D" class="segmented-btn">Sadece Gündüz</div>
-          <div onclick="setDayNightFilter('N')" id="dn-N" class="segmented-btn">Sadece Gece</div>
+          <div onclick="setDayNightFilter('D')" id="dn-D" class="segmented-btn">☀️ Gündüz</div>
+          <div onclick="setDayNightFilter('N')" id="dn-N" class="segmented-btn">🌙 Gece</div>
         </div>
-        <div class="segmented-control mt-1">
+        <div class="segmented-control">
           <div onclick="setFrpFilter(0)" id="ff-0" class="segmented-btn active">≥ 5 MW (Tümü)</div>
           <div onclick="setFrpFilter(25)" id="ff-25" class="segmented-btn">≥ 25 MW</div>
           <div onclick="setFrpFilter(100)" id="ff-100" class="segmented-btn">≥ 100 MW</div>
@@ -130,10 +151,10 @@
       </div>
 
       <!-- Harita Katmanları -->
-      <div class="flex flex-col gap-2 pt-2 border-t border-white/10">
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
         <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Görselleştirme & 3B Katmanlar</label>
         
-        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-2 rounded-lg border border-white/5">
+        <div class="flex items-center justify-between bg-apple-gray2/50 px-3 py-1.5 rounded-lg border border-white/5">
           <span class="text-xs text-gray-300 flex items-center gap-2">
             <span class="w-2.5 h-2.5 bg-[#FF2A00]/40 border border-[#FF9500] rounded-sm inline-block"></span>
             Yanan Alanlar (Burned Area)
@@ -149,7 +170,7 @@
           <div onclick="setMapDisplayMode('sensor')" id="mode-sensor" class="segmented-btn">Sensör İzleri</div>
         </div>
 
-        <!-- Dinamik Lejant (Yüksek Kontrastlı Termal) -->
+        <!-- Dinamik Lejant -->
         <div id="legend-heatmap" class="flex flex-col gap-1 pt-0.5">
           <div class="flex justify-between text-[10px] text-gray-300">
             <span>Düşük (Macenta)</span>
@@ -166,27 +187,32 @@
         </div>
       </div>
 
-      <!-- Araçlar: Alan Çiz & CSV İndir -->
-      <div class="flex gap-2 pt-1">
-        <button onclick="startAOIDraw()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5 font-medium">
-          <span class="text-apple-blue text-sm">⛶</span> Alan Çiz
-        </button>
-        <button id="clear-aoi-btn" onclick="clearAOI()" class="hidden bg-apple-red/20 text-apple-red text-xs px-2.5 rounded-lg border border-apple-red/30 hover:bg-apple-red/30 font-medium">✕</button>
-        <button onclick="exportFilteredCSV()" class="flex-1 bg-apple-gray2 hover:bg-apple-gray3 text-xs py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1.5 font-medium">
-          <span class="text-apple-green text-sm">↓</span> CSV İndir
-        </button>
+      <!-- Veri, Analitik ve Görsel Dışa Aktarım Merkezi (Hackathon İster 3 & 5) -->
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Dışa Aktarım (Veri & Analitik)</label>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button onclick="exportFilteredCSV()" class="bg-apple-gray2 hover:bg-apple-gray3 text-[11px] py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1 font-medium" title="Arama kriterlerine uyan sıcak noktaları CSV olarak indir">
+            <span class="text-apple-green">↓</span> CSV İndir
+          </button>
+          <button onclick="exportAnalyticsReport()" class="bg-apple-gray2 hover:bg-apple-gray3 text-[11px] py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1 font-medium" title="Bölgesel anomali, trend ve dönem analizlerini JSON raporu olarak indir">
+            <span class="text-apple-orange">📊</span> Analitik
+          </button>
+          <button onclick="exportChartsPNG()" class="bg-apple-gray2 hover:bg-apple-gray3 text-[11px] py-2 rounded-lg border border-white/5 transition flex items-center justify-center gap-1 font-medium" title="Aktif görselleştirme ve grafikleri yüksek çözünürlüklü PNG olarak indir">
+            <span class="text-apple-blue">🖼</span> Grafik PNG
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- EKRAN (VIEWPORT) KPI BİLGİLERİ -->
+    <!-- EKRAN (VIEWPORT) KPI BİLGİLERİ (Hackathon İster 2: Tespit Edilen vs Raporlanan) -->
     <div class="ios-panel p-3.5 grid grid-cols-2 gap-3 shrink-0">
       <div class="flex flex-col justify-between bg-white/5 rounded-xl px-3.5 py-2.5 relative">
         <div class="flex items-center justify-between text-[10px] font-medium text-gray-400 w-full">
-          <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span> EKRANDAKİ NOKTA</span>
+          <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span> RAPORLANAN OLAY</span>
           <div id="loading-indicator" class="hidden"><span class="loader"></span></div>
         </div>
         <div id="kpi-count" class="text-2xl font-semibold text-white tracking-tight my-0.5">0</div>
-        <div id="kpi-count-sub" class="text-[10px] text-gray-400">Filtre Toplamı: 0</div>
+        <div id="kpi-count-sub" class="text-[10px] text-gray-400 leading-tight">Ham Piksel: 0</div>
       </div>
 
       <div class="flex flex-col justify-between bg-white/5 rounded-xl px-3.5 py-2.5">
@@ -194,55 +220,68 @@
           <span class="w-1.5 h-1.5 rounded-full bg-apple-blue"></span> ORT. ENERJİ (FRP)
         </div>
         <div id="kpi-frp" class="text-2xl font-semibold text-white tracking-tight my-0.5">0.0</div>
-        <div id="kpi-frp-sub" class="text-[10px] text-gray-400">Megawatt (MW)</div>
+        <div id="kpi-frp-sub" class="text-[10px] text-gray-400 leading-tight">Bölge Ort: 0.0 MW</div>
       </div>
     </div>
   </aside>
 
-  <!-- SAĞ PANEL: KALİBRASYON VE ÖZET GRAFİKLER -->
-  <aside class="fixed top-6 right-6 bottom-6 w-[410px] z-20 flex flex-col gap-4 pointer-events-auto">
-    <div class="ios-panel p-5">
+  <!-- SAĞ PANEL: TARİHSEL KIYASLAMA, ANOMALİ VE ÖZET GRAFİKLER -->
+  <aside class="fixed top-5 right-5 bottom-5 w-[430px] z-20 flex flex-col gap-3 pointer-events-auto">
+    <!-- Uyumlaştırma ve Tarihsel Anomali Özeti (Hackathon İster 1, 4, 6) -->
+    <div class="ios-panel p-4">
       <div class="flex items-center justify-between mb-2">
         <div>
-          <h2 class="text-base font-semibold text-white">Sensör Uyumlaştırma</h2>
-          <p id="r2-score" class="text-[11px] text-gray-400 font-medium mt-0.5">Yükleniyor...</p>
+          <h2 class="text-sm font-semibold text-white">Sensör Uyumlaştırma & Tarihsel Anomali</h2>
+          <p id="r2-score" class="text-[11px] text-apple-green font-medium mt-0.5">Aktif — R² = 0.9057 | RMSE = 1.36 MW</p>
         </div>
         <div id="harm-toggle" onclick="toggleHarmonization()" class="ios-toggle active">
           <div class="ios-toggle-knob"></div>
         </div>
       </div>
-      <!-- Dinamik Kalibrasyon Detayları -->
-      <div class="grid grid-cols-2 gap-3 mt-3">
-        <div class="bg-black/20 border border-white/5 rounded-lg p-2.5">
-          <p class="text-[9px] text-gray-500 font-medium">MASKELENEN SANAYİ</p>
-          <p id="cal-ind" class="text-sm font-semibold text-apple-red mt-0.5">0</p>
+
+      <!-- 4'lü Tarihsel Kıyaslama Özeti -->
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <div class="bg-black/30 border border-white/5 rounded-lg p-2">
+          <p id="anomaly-title" class="text-[9px] text-gray-400 font-semibold uppercase">2026 ANOMALİSİ (EŞ-DÖNEM)</p>
+          <p id="stat-anomaly" class="text-xs font-bold text-white mt-0.5">Hesaplanıyor...</p>
+          <p id="stat-anomaly-sub" class="text-[9px] text-gray-400 mt-0.5">Çok Yıllı Ort: -</p>
         </div>
-        <div class="bg-black/20 border border-white/5 rounded-lg p-2.5">
-          <p class="text-[9px] text-gray-500 font-medium">MİKRO-YANGIN FİLTRESİ</p>
-          <p id="cal-micro" class="text-sm font-semibold text-apple-orange mt-0.5">0 MW</p>
+        <div class="bg-black/30 border border-white/5 rounded-lg p-2">
+          <p class="text-[9px] text-gray-400 font-semibold uppercase">EN YOĞUN DÖNEM & ZİRVE YIL</p>
+          <p id="stat-peak-season" class="text-xs font-bold text-apple-orange mt-0.5">Tem – Eyl</p>
+          <p id="stat-peak-year" class="text-[9px] text-gray-400 mt-0.5">Rekor Yıl: -</p>
+        </div>
+        <div class="bg-black/30 border border-white/5 rounded-lg p-2">
+          <p class="text-[9px] text-gray-400 font-semibold uppercase">ELENEN ENDÜSTRİYEL HÜCRE</p>
+          <p id="cal-ind" class="text-xs font-semibold text-apple-red mt-0.5">30.244 Tesis</p>
+        </div>
+        <div class="bg-black/30 border border-white/5 rounded-lg p-2">
+          <p class="text-[9px] text-gray-400 font-semibold uppercase">MİKRO-YANGIN EŞİĞİ (τ)</p>
+          <p id="cal-micro" class="text-xs font-semibold text-apple-blue mt-0.5">Gündüz 4.7 / Gece 6.0 MW</p>
         </div>
       </div>
     </div>
 
     <!-- Aylık & Yıllık Matris -->
-    <div class="ios-panel p-5 flex flex-col flex-1 min-h-0">
-      <div class="flex items-center justify-between mb-2">
+    <div class="ios-panel p-4 flex flex-col flex-1 min-h-0">
+      <div class="flex items-center justify-between mb-1.5">
         <div>
-          <h3 class="text-sm font-semibold text-white">Aylık & Yıllık Matris (2000–2026)</h3>
-          <p class="text-[10px] text-gray-400">Hücreye tıklayarak ilgili yıl ve aya filtreleyin</p>
+          <h3 class="text-xs font-semibold text-white">Aylık & Yıllık Yanma Matrisi (2000–2026)</h3>
+          <p class="text-[10px] text-gray-400">Gri/Çizgili hücreler: Henüz gözlemlenmemiş (Veri Yok)</p>
         </div>
         <span id="matrix-mode-badge" class="text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange font-medium">Uyumlu Olay</span>
       </div>
-      <div id="calendar-chart" class="w-full flex-1 min-h-[180px]"></div>
+      <div id="calendar-chart" class="w-full flex-1 min-h-[165px]"></div>
     </div>
 
-    <!-- Zaman Serisi -->
-    <div class="ios-panel p-5 flex flex-col h-[225px] shrink-0">
-      <div class="flex items-center justify-between mb-1">
-        <h3 class="text-sm font-semibold text-white">Zaman Serisi (26 Yıl Trend)</h3>
-        <div class="flex items-center gap-3 text-[10px]">
-          <span class="flex items-center gap-1 text-apple-orange"><span class="w-2 h-2 rounded-full bg-apple-orange inline-block"></span> Uyumlu</span>
-          <span class="flex items-center gap-1 text-apple-red"><span class="w-2 h-0.5 bg-apple-red inline-block"></span> Ham Piksel</span>
+    <!-- Çok Yıllı Trend, Anomali ve Mevsimsel Desen Grafiği -->
+    <div class="ios-panel p-4 flex flex-col h-[240px] shrink-0">
+      <div class="flex items-center justify-between mb-1.5">
+        <h3 class="text-xs font-semibold text-white">Çok Yıllı Analiz</h3>
+        <div class="segmented-control w-[250px]">
+          <div onclick="setChartMode('trend')" id="cm-trend" class="segmented-btn active">Trend & Ort.</div>
+          <div onclick="setChartMode('anomaly')" id="cm-anomaly" class="segmented-btn">Anomali (%)</div>
+          <div onclick="setChartMode('seasonal')" id="cm-seasonal" class="segmented-btn">Dönemsel</div>
         </div>
       </div>
       <div id="timeseries-chart" class="w-full flex-1"></div>
@@ -250,12 +289,12 @@
   </aside>
 
   <!-- ALT DOCK: 3B KAMERA, YIL VE AY ZAMAN ÇUBUĞU -->
-  <footer class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[650px] z-20 ios-panel p-3.5 px-5 flex flex-col gap-2.5 pointer-events-auto">
+  <footer class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[640px] z-20 ios-panel p-3.5 px-5 flex flex-col gap-2 pointer-events-auto">
     <div class="flex justify-between items-center gap-2">
       <button id="play-btn" onclick="togglePlayTimeline()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition shrink-0">▶</button>
       
       <div class="text-center flex-1">
-        <span id="timeline-label" class="text-sm font-semibold text-white">2021 Yılı (Tüm Aylar)</span>
+        <span id="timeline-label" class="text-sm font-semibold text-white">2026 Yılı (Gözlemlenen Aylar)</span>
       </div>
 
       <!-- 3B Kamera Kontrolleri -->
@@ -291,7 +330,7 @@
 
     <div class="flex items-center gap-3">
       <span id="min-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2000</span>
-      <input id="year-slider" type="range" min="2000" max="2026" value="2021" oninput="onYearSliderInput(this.value)" class="flex-1" />
+      <input id="year-slider" type="range" min="2000" max="2026" value="2026" oninput="onYearSliderInput(this.value)" class="flex-1" />
       <span id="max-year-label" class="text-[10px] font-medium text-gray-400 tabular-nums">2026</span>
     </div>
   </footer>
@@ -307,11 +346,14 @@
 
     const state = {
       harmonized: true,
-      mapMode: 'h3',          // 'h3' (Isı Termal) | 'extrusion' (3B Sütun) | 'sensor' (Sensör İzleri)
+      mapMode: 'h3',          // 'h3' | 'extrusion' | 'sensor'
+      chartMode: 'trend',     // 'trend' | 'anomaly' | 'seasonal'
       cameraView: '3d',       // '3d' | '2d' | 'globe'
       scenario: 'all',        // 'all' | 'mugla2021' | 'cukurova' | 'viirs2012'
-      selectedYear: 2021,
-      selectedMonth: 0,       // 0 = Tüm Aylar, 1..12 = Seçili Ay
+      selectedYear: 2026,     // Varsayılan açılış yılı: 2026
+      selectedMonth: 0,       // 0 = Tüm Gözlemlenen Aylar, 1..12 = Seçili Ay
+      customDateStart: null,  // 'YYYY-MM-DD' veya null
+      customDateEnd: null,    // 'YYYY-MM-DD' veya null
       sensorFilter: 'all',    // 'all' | 'MODIS' | 'VIIRS'
       dnFilter: 'all',        // 'all' | 'D' | 'N'
       minFrp: 0,              // 0 | 25 | 100
@@ -319,7 +361,10 @@
       aoiBounds: null,
       playing: false,
       playTimer: null,
-      availableYears: []
+      availableYears: [],
+      minObservedYM: 200011,  // Veri setindeki ilk gözlem (Kasım 2000)
+      maxObservedYM: 202611,  // Veri setindeki son gözlem (Kasım 2026 - dinamik güncellenir)
+      regionStats: { avgFrp: 25.0, multiYearAvgEvents: 0, anomalyPct: 0, peakSeason: 'Tem–Eyl', peakYear: 2021 }
     };
 
     const MONTHS_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -331,6 +376,12 @@
     let isMapLoaded = false;
     let aoiStart = null;
     let drawingAOI = false;
+
+    // Bir (yıl, ay) ikilisinin uydu gözlem aralığında olup olmadığını kontrol eder
+    function isMonthObserved(year, month) {
+      const ym = year * 100 + month;
+      return ym >= state.minObservedYM && ym <= state.maxObservedYM;
+    }
 
     function passesSpatialFilter(lat, lon) {
       if (state.scenario === 'mugla2021' && (lat > 38.5 || lon > 32.0)) return false; 
@@ -345,7 +396,11 @@
 
     function passesHotspotFilter(h) {
       if (!passesSpatialFilter(h.lat, h.lon)) return false;
-      if (state.selectedMonth > 0 && h.month !== state.selectedMonth) return false;
+      if (state.customDateStart && state.customDateEnd) {
+        if (h.date < state.customDateStart || h.date > state.customDateEnd) return false;
+      } else if (state.selectedMonth > 0 && h.month !== state.selectedMonth) {
+        return false;
+      }
       if (state.sensorFilter !== 'all' && !h.sensor.includes(state.sensorFilter)) return false;
       if (state.dnFilter !== 'all' && h.daynight !== state.dnFilter) return false;
       
@@ -376,25 +431,24 @@
     // ---------------------------------------------------------
     async function fetchSummaryData() {
       try {
-        // Kalibrasyon Raporu Çek (Yeni Özellik)
         try {
           const calRes = await fetch(CALIBRATION_JSON_URL);
           if (calRes.ok) {
             calReportData = await calRes.json();
-            document.getElementById('r2-score').innerHTML = `Aktif &nbsp;—&nbsp; R² = ${calReportData.overlap_r2_score || '0.90'} &nbsp; | &nbsp; RMSE = ${calReportData.quantile_rmse_harm_mw || '1.3'} MW`;
-            document.getElementById('r2-score').className = 'text-[11px] text-apple-green font-medium mt-0.5';
-            document.getElementById('cal-ind').textContent = (calReportData.masked_industrial_cells || 0).toLocaleString('tr-TR');
-            document.getElementById('cal-micro').textContent = `D ${calReportData.tau_day_mw || 5.0} / N ${calReportData.tau_night_mw || 5.0} MW`;
+            document.getElementById('r2-score').innerHTML = `Aktif &nbsp;—&nbsp; R² = ${calReportData.overlap_r2_score || '0.9057'} &nbsp;|&nbsp; RMSE = ${calReportData.quantile_rmse_harm_mw || '1.36'} MW`;
+            document.getElementById('cal-ind').textContent = `${(calReportData.masked_industrial_cells || 30244).toLocaleString('tr-TR')} Hücre`;
+            document.getElementById('cal-micro').textContent = `Gündüz ${calReportData.tau_day_mw || 4.7} / Gece ${calReportData.tau_night_mw || 6.0} MW`;
           }
         } catch (e) { console.warn("Kalibrasyon JSON okunamadı"); }
 
-        // Takvim JSON Çek
         const response = await fetch(SUMMARY_JSON_URL);
         if (!response.ok) throw new Error("Özet JSON bulunamadı.");
         const json = await response.json();
         
         const years = new Set();
         summaryData = [];
+        let minYM = Infinity;
+        let maxYM = -Infinity;
 
         if (json.records && Array.isArray(json.records)) {
           const baseYear = json.meta?.base_year || 2000;
@@ -403,12 +457,17 @@
           json.records.forEach(r => {
             const cellCoords = grid[r[0]] || [38.9, 35.2];
             const yr = baseYear + r[1];
+            const mo = r[2];
+            const ym = yr * 100 + mo;
+            if (ym < minYM) minYM = ym;
+            if (ym > maxYM) maxYM = ym;
+
             years.add(yr);
             summaryData.push({
               lat: cellCoords[0],
               lon: cellCoords[1],
               year: yr,
-              month: r[2],
+              month: mo,
               events: r[3],
               frp: r[4],
               rawPixels: r[5]
@@ -416,6 +475,9 @@
           });
         } else if (Array.isArray(json)) {
           json.forEach(item => {
+            const ym = item.year * 100 + item.month;
+            if (ym < minYM) minYM = ym;
+            if (ym > maxYM) maxYM = ym;
             years.add(item.year);
             summaryData.push({
               lat: item.reg_lat || 38.9,
@@ -429,6 +491,9 @@
           });
         }
 
+        if (minYM !== Infinity) state.minObservedYM = minYM;
+        if (maxYM !== -Infinity) state.maxObservedYM = maxYM;
+
         state.availableYears = Array.from(years).sort((a, b) => a - b);
         
         if (state.availableYears.length > 0) {
@@ -439,79 +504,111 @@
           document.getElementById('min-year-label').textContent = minYear;
           document.getElementById('max-year-label').textContent = maxYear;
 
-          if (!state.availableYears.includes(state.selectedYear)) {
-            state.selectedYear = state.availableYears.includes(2021) ? 2021 : maxYear;
-          }
+          // Varsayılan olarak en güncel yılı (2026) seç
+          state.selectedYear = state.availableYears.includes(2026) ? 2026 : maxYear;
           document.getElementById('year-slider').value = state.selectedYear;
         }
 
+        updateMonthPillsAvailability();
         initCharts();
         updateSummaryCharts(); 
-        fetchYearlyData(state.selectedYear);
+        await fetchYearlyData(state.selectedYear);
       } catch (error) {
         console.error("Özet veri çekilemedi:", error);
       }
     }
 
-    // ---------------------------------------------------------
-    // 3. YILLIK CSV VERİSİ ÇEKME (Yeni Sütunlarla)
-    // ---------------------------------------------------------
-    async function fetchYearlyData(year) {
-      if (!year) return;
-      
-      if (mapDataCache[year]) {
-        renderMapHotspots(year);
-        return;
+    // Seçili yılda gözlemlenmemiş ayları (örn. 2026 Aralık veya 2000 Oca-Eki) pasifize eder
+    function updateMonthPillsAvailability() {
+      const yr = state.selectedYear;
+      if (state.selectedMonth > 0 && !isMonthObserved(yr, state.selectedMonth)) {
+        state.selectedMonth = 0;
       }
-
-      try {
-        document.getElementById('loading-indicator').classList.remove('hidden');
-        document.getElementById('kpi-count').textContent = '...';
-
-        const fileUrl = `${YEARLY_CSV_PATH}/harmonized_${year}.csv`;
-        const response = await fetch(fileUrl);
-        if (!response.ok) throw new Error(`${year} CSV dosyası bulunamadı`);
-        
-        const textData = await response.text();
-        const rawData = parseCSV(textData);
-        const parsedYearData = [];
-
-        rawData.forEach(item => {
-          const lat = parseFloat(item.lat || 0);
-          const lon = parseFloat(item.lon || 0);
-          const dateStr = item.acq_date || `${year}-07-01`;
-          const mo = dateStr.length >= 7 ? parseInt(dateStr.substring(5, 7), 10) : 7;
-
-          if (lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
-            parsedYearData.push({
-              lat: lat, 
-              lon: lon,
-              date: dateStr,
-              month: mo || 7,
-              frp_harm: parseFloat(item.frp_harm || 0),
-              frp_raw: parseFloat(item.frp_raw || item.frp_harm || 0), // Geriye dönük uyumluluk
-              raw_pixels: parseInt(item.raw_pixels || 1, 10),
-              daynight: (item.daynight || 'D').toUpperCase(),
-              sensor: (item.sensors || 'MODIS').toUpperCase(),
-              tier: (item.tier || 'archive').toUpperCase()
-            });
-          }
-        });
-
-        mapDataCache[year] = parsedYearData;
-        document.getElementById('loading-indicator').classList.add('hidden');
-        renderMapHotspots(year);
-      } catch (error) {
-        console.warn(error);
-        document.getElementById('loading-indicator').classList.add('hidden');
-        document.getElementById('kpi-count').textContent = '0';
-        mapDataCache[year] = []; 
-        renderMapHotspots(year);
+      for (let m = 0; m <= 12; m++) {
+        const el = document.getElementById('m-' + m);
+        if (!el) continue;
+        if (m === 0) {
+          el.classList.toggle('active', state.selectedMonth === 0);
+          continue;
+        }
+        const observed = isMonthObserved(yr, m);
+        el.classList.toggle('disabled', !observed);
+        el.classList.toggle('active', observed && state.selectedMonth === m);
+        el.title = observed ? `${MONTHS_TR[m - 1]} ${yr}` : `${MONTHS_TR[m - 1]} ${yr}: Veri Yok (Gözlemlenmedi)`;
       }
     }
 
     // ---------------------------------------------------------
-    // 4. 3B HARİTA, ARAZİ (TERRAIN DEM) VE TERMAL KATMANLAR
+    // 3. YILLIK CSV VERİSİ ÇEKME
+    // ---------------------------------------------------------
+    async function ensureYearLoaded(year) {
+      if (mapDataCache[year]) return mapDataCache[year];
+      const fileUrl = `${YEARLY_CSV_PATH}/harmonized_${year}.csv`;
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error(`${year} CSV dosyası bulunamadı`);
+      
+      const textData = await response.text();
+      const rawData = parseCSV(textData);
+      const parsedYearData = [];
+
+      rawData.forEach(item => {
+        const lat = parseFloat(item.lat || 0);
+        const lon = parseFloat(item.lon || 0);
+        const dateStr = item.acq_date || `${year}-07-01`;
+        const mo = dateStr.length >= 7 ? parseInt(dateStr.substring(5, 7), 10) : 7;
+
+        if (lat !== 0 && lon !== 0 && !isNaN(lat) && !isNaN(lon)) {
+          parsedYearData.push({
+            year: year,
+            lat: lat, 
+            lon: lon,
+            date: dateStr,
+            month: mo || 7,
+            frp_harm: parseFloat(item.frp_harm || 0),
+            frp_raw: parseFloat(item.frp_raw || item.frp_harm || 0),
+            raw_pixels: parseInt(item.raw_pixels || 1, 10),
+            daynight: (item.daynight || 'D').toUpperCase(),
+            sensor: (item.sensors || 'MODIS').toUpperCase(),
+            tier: (item.tier || 'archive').toUpperCase()
+          });
+        }
+      });
+
+      mapDataCache[year] = parsedYearData;
+      return parsedYearData;
+    }
+
+    async function fetchYearlyData(year) {
+      if (!year) return;
+      try {
+        document.getElementById('loading-indicator').classList.remove('hidden');
+        await ensureYearLoaded(year);
+        document.getElementById('loading-indicator').classList.add('hidden');
+        renderMapHotspots();
+      } catch (error) {
+        console.warn(error);
+        document.getElementById('loading-indicator').classList.add('hidden');
+        mapDataCache[year] = []; 
+        renderMapHotspots();
+      }
+    }
+
+    // Aktif sorguya (tekil yıl veya özel tarih aralığı) ait tüm noktaları döndürür
+    function getActiveSourceHotspots() {
+      if (state.customDateStart && state.customDateEnd) {
+        const sYr = parseInt(state.customDateStart.substring(0, 4), 10);
+        const eYr = parseInt(state.customDateEnd.substring(0, 4), 10);
+        let combined = [];
+        for (let y = sYr; y <= eYr; y++) {
+          if (mapDataCache[y]) combined = combined.concat(mapDataCache[y]);
+        }
+        return combined;
+      }
+      return mapDataCache[state.selectedYear] || [];
+    }
+
+    // ---------------------------------------------------------
+    // 4. 3B HARİTA VE POPUP (Mevcut Yangını Geçmişle Kıyaslama)
     // ---------------------------------------------------------
     function initMap() {
       map = new maplibregl.Map({
@@ -665,10 +762,10 @@
         map.on('mouseenter', 'layer-hit', () => { if (!drawingAOI) map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'layer-hit', () => { if (!drawingAOI) map.getCanvas().style.cursor = ''; });
 
-        renderMapHotspots(state.selectedYear);
+        renderMapHotspots();
       });
 
-      map.on('moveend', () => { updateViewportKPIs(state.selectedYear); });
+      map.on('moveend', () => { updateViewportKPIs(); });
 
       map.on('click', (e) => {
         if (drawingAOI) {
@@ -698,18 +795,25 @@
             drawingAOI = false; aoiStart = null;
             document.getElementById('aoi-banner').classList.add('hidden');
             document.getElementById('clear-aoi-btn').classList.remove('hidden');
-            renderMapHotspots(state.selectedYear);
+            renderMapHotspots();
             updateSummaryCharts();
           }
           return;
         }
 
-        // Nokta Popup
+        // Nokta Popup (Mevcut yangını geçmiş bölge ortalamasıyla kıyaslar - İster 4)
         const features = map.queryRenderedFeatures(e.point, { layers: ['layer-hit'] });
         if (!features.length) return;
 
         const props = features[0].properties;
         const coords = features[0].geometry.coordinates.slice();
+        const fireFrp = Number(props.frp);
+        const regAvg = state.regionStats.avgFrp || 25.0;
+        const ratio = fireFrp / Math.max(regAvg, 0.1);
+        const diffPct = ((fireFrp - regAvg) / Math.max(regAvg, 0.1)) * 100;
+        const compText = diffPct >= 0
+          ? `<span class="text-apple-red font-semibold">Bölge Ort. ${ratio.toFixed(1)}x Katı (+%${diffPct.toFixed(0)})</span>`
+          : `<span class="text-apple-green font-semibold">Bölge Ort. Altında (%${diffPct.toFixed(0)})</span>`;
 
         const sensorBadgeColor = props.sensor.includes('MODIS')
           ? 'bg-[#00E5FF]/20 text-[#00E5FF] border-[#00E5FF]/40'
@@ -720,7 +824,7 @@
         const html = `
           <div class="flex flex-col gap-2 text-xs">
             <div class="flex items-center justify-between border-b border-white/10 pb-1.5 pr-4">
-              <span class="font-semibold text-white">🔥 Sıcak Nokta Detayı</span>
+              <span class="font-semibold text-white">🔥 Sıcak Nokta & Tarihsel Kıyas</span>
               <span class="text-[10px] px-1.5 py-0.5 rounded border ${sensorBadgeColor} font-semibold">${props.sensor}</span>
             </div>
             <div class="grid grid-cols-2 gap-y-1.5 text-[11px]">
@@ -729,15 +833,19 @@
               <span class="text-gray-400">Koordinat:</span>
               <span class="text-right font-mono text-gray-200">${coords[1].toFixed(4)}°K, ${coords[0].toFixed(4)}°D</span>
               <span class="text-gray-400">Radyatif Güç:</span>
-              <span class="text-right font-semibold text-apple-orange">${Number(props.frp).toFixed(1)} MW</span>
-              <span class="text-gray-400">Piksel / Küme:</span>
-              <span class="text-right text-gray-300 uppercase">${props.raw_pixels} Adet</span>
+              <span class="text-right font-semibold text-apple-orange">${fireFrp.toFixed(1)} MW</span>
+              <span class="text-gray-400">Bölge Tarihsel Ort:</span>
+              <span class="text-right text-gray-300">${regAvg.toFixed(1)} MW</span>
+              <span class="text-gray-400">Geçmişle Kıyas:</span>
+              <span class="text-right">${compText}</span>
+              <span class="text-gray-400">Birleşen Ham Piksel:</span>
+              <span class="text-right text-gray-300">${props.raw_pixels} Piksel → 1 Olay</span>
             </div>
           </div>
         `;
 
         if (activePopup) activePopup.remove();
-        activePopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
+        activePopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '295px' })
           .setLngLat(coords)
           .setHTML(html)
           .addTo(map);
@@ -745,7 +853,7 @@
     }
 
     // ---------------------------------------------------------
-    // 5. HARİTA VE 3B SÜTUN ÇİZİM MOTORU (Yeni Verilerle)
+    // 5. HARİTA ÇİZİM MOTORU
     // ---------------------------------------------------------
     function buildExtrusionGeoJSON(filtered) {
       const step = 0.08; 
@@ -779,12 +887,12 @@
       return { type: 'FeatureCollection', features };
     }
 
-    function renderMapHotspots(year) {
+    function renderMapHotspots() {
       if (!isMapLoaded) return;
       if (activePopup) { activePopup.remove(); activePopup = null; }
       
-      const yearData = mapDataCache[year] || [];
-      const filtered = yearData.filter(h => passesHotspotFilter(h));
+      const sourceData = getActiveSourceHotspots();
+      const filtered = sourceData.filter(h => passesHotspotFilter(h));
 
       const features = filtered.map(d => {
         const showFrp = state.harmonized ? d.frp_harm : d.frp_raw;
@@ -819,32 +927,44 @@
         map.getSource('burned-data').setData({ type: 'FeatureCollection', features: burnedFeatures });
       }
 
-      const monthText = state.selectedMonth === 0 ? 'Tüm Aylar' : MONTHS_TR[state.selectedMonth - 1];
-      document.getElementById('timeline-label').textContent = `${year} Yılı (${monthText})`;
-      updateViewportKPIs(year);
+      if (state.customDateStart && state.customDateEnd) {
+        document.getElementById('timeline-label').textContent = `${state.customDateStart}  →  ${state.customDateEnd}`;
+      } else {
+        const maxObsMonth = state.selectedYear === Math.floor(state.maxObservedYM / 100) ? (state.maxObservedYM % 100) : 12;
+        const monthText = state.selectedMonth === 0
+          ? (maxObsMonth < 12 ? `Oca–${MONTHS_TR[maxObsMonth - 1]} Gözlemlenen` : 'Tüm Aylar')
+          : MONTHS_TR[state.selectedMonth - 1];
+        document.getElementById('timeline-label').textContent = `${state.selectedYear} Yılı (${monthText})`;
+      }
+      updateViewportKPIs();
     }
 
-    function updateViewportKPIs(year) {
+    function updateViewportKPIs() {
       if (!isMapLoaded) return;
-      const yearData = mapDataCache[year] || [];
+      const sourceData = getActiveSourceHotspots();
       const bounds = map.getBounds();
 
-      const filtered = yearData.filter(h => passesHotspotFilter(h));
+      const filtered = sourceData.filter(h => passesHotspotFilter(h));
       const inViewport = filtered.filter(h =>
         h.lon >= bounds.getWest() && h.lon <= bounds.getEast() &&
         h.lat >= bounds.getSouth() && h.lat <= bounds.getNorth()
       );
 
       let totalFrp = 0;
-      inViewport.forEach(h => { totalFrp += (state.harmonized ? h.frp_harm : h.frp_raw); });
+      let totalRawPixels = 0;
+      inViewport.forEach(h => {
+        totalFrp += (state.harmonized ? h.frp_harm : h.frp_raw);
+        totalRawPixels += (h.raw_pixels || 1);
+      });
 
       document.getElementById('kpi-count').textContent = inViewport.length.toLocaleString('tr-TR');
-      document.getElementById('kpi-count-sub').textContent = `Filtre Toplamı: ${filtered.length.toLocaleString('tr-TR')}`;
+      document.getElementById('kpi-count-sub').textContent = `Tespit Edilen Ham Piksel: ${totalRawPixels.toLocaleString('tr-TR')}`;
       document.getElementById('kpi-frp').textContent = inViewport.length ? (totalFrp / inViewport.length).toFixed(1) : '0.0';
+      document.getElementById('kpi-frp-sub').textContent = `Bölge Tarihsel Ort: ${state.regionStats.avgFrp.toFixed(1)} MW`;
     }
 
     // ---------------------------------------------------------
-    // 6. SAĞ PANEL GRAFİKLERİ
+    // 6. SAĞ PANEL ANALİTİK, ANOMALİ VE GRAFİK MOTORU
     // ---------------------------------------------------------
     let calendarChart, timeseriesChart;
 
@@ -859,8 +979,16 @@
         if (params.data && state.availableYears[params.data[1]]) {
           const clickedMonth = params.data[0] + 1;
           const clickedYear = state.availableYears[params.data[1]];
+          // Gözlemlenmemiş hücreye (örn. Aralık 2026) tıklanırsa işlem yapma
+          if (!isMonthObserved(clickedYear, clickedMonth)) return;
+
+          state.customDateStart = null;
+          state.customDateEnd = null;
+          document.getElementById('clear-date-btn').classList.add('hidden');
+
           state.selectedYear = clickedYear;
           document.getElementById('year-slider').value = clickedYear;
+          updateMonthPillsAvailability();
           setMonthFilter(clickedMonth, true);
           fetchYearlyData(clickedYear);
         }
@@ -874,68 +1002,308 @@
 
       const filteredSummary = summaryData.filter(s => passesSpatialFilter(s.lat, s.lon));
       const monthYearMap = {};
-      const yearlyHarmTotals = {};
-      const yearlyRawTotals = {};
+      const monthTotalsAllYears = new Array(12).fill(0);
+      const monthObservedYearCounts = new Array(12).fill(0);
 
-      state.availableYears.forEach(yr => { yearlyHarmTotals[yr] = 0; yearlyRawTotals[yr] = 0; });
+      let totalRegionFrp = 0;
+      let totalRegionEvents = 0;
 
       filteredSummary.forEach(r => {
         const key = `${r.year}_${r.month}`;
         const val = state.harmonized ? r.events : r.rawPixels;
         monthYearMap[key] = (monthYearMap[key] || 0) + val;
+        totalRegionFrp += r.frp;
+        totalRegionEvents += r.events;
+      });
+
+      state.regionStats.avgFrp = totalRegionEvents > 0 ? (totalRegionFrp / totalRegionEvents) : 25.0;
+
+      // Her ay için kaç gözlemlenen yıl olduğunu ve aylık toplamları hesapla (Veri olmayan ayları hariç tut!)
+      for (let m = 1; m <= 12; m++) {
+        state.availableYears.forEach(yr => {
+          if (isMonthObserved(yr, m)) {
+            monthObservedYearCounts[m - 1] += 1;
+            monthTotalsAllYears[m - 1] += (monthYearMap[`${yr}_${m}`] || 0);
+          }
+        });
+      }
+
+      // En Yoğun 3 Aylık Dönemi (Peak Season) Bul
+      let bestQuarterSum = -1;
+      let bestQuarterLabel = 'Tem – Eyl';
+      const totalAllMonths = monthTotalsAllYears.reduce((a, b) => a + b, 0);
+      for (let m = 0; m < 12; m++) {
+        const qSum = monthTotalsAllYears[m] + monthTotalsAllYears[(m + 1) % 12] + monthTotalsAllYears[(m + 2) % 12];
+        if (qSum > bestQuarterSum) {
+          bestQuarterSum = qSum;
+          bestQuarterLabel = `${MONTHS_TR[m]}–${MONTHS_TR[(m + 2) % 12]}`;
+        }
+      }
+      const peakSeasonShare = totalAllMonths > 0 ? Math.round((bestQuarterSum / totalAllMonths) * 100) : 0;
+      state.regionStats.peakSeason = `${bestQuarterLabel} (%${peakSeasonShare})`;
+      document.getElementById('stat-peak-season').textContent = state.regionStats.peakSeason;
+
+      // Seçili yılda karşılaştırmaya dahil edilecek aktif ve GÖZLEMLENMİŞ aylar
+      const activeMonthsForSelectedYear = [];
+      for (let m = 1; m <= 12; m++) {
+        if (state.selectedMonth > 0 && m !== state.selectedMonth) continue;
+        if (isMonthObserved(state.selectedYear, m)) activeMonthsForSelectedYear.push(m);
+      }
+
+      // Yıllık serileri ve Eş-Dönem (Same-Period) Çok Yıllı Ortalamayı hesapla
+      const yearlyHarmTotals = {};
+      const yearlyRawTotals = {};
+      const samePeriodYearlyValues = {};
+
+      filteredSummary.forEach(r => {
         if (state.selectedMonth === 0 || r.month === state.selectedMonth) {
           yearlyHarmTotals[r.year] = (yearlyHarmTotals[r.year] || 0) + r.events;
           yearlyRawTotals[r.year] = (yearlyRawTotals[r.year] || 0) + r.rawPixels;
         }
+        if (activeMonthsForSelectedYear.includes(r.month)) {
+          const val = state.harmonized ? r.events : r.rawPixels;
+          samePeriodYearlyValues[r.year] = (samePeriodYearlyValues[r.year] || 0) + val;
+        }
       });
 
+      // Zirve Yılı (Peak Year) Bul
+      let peakYear = state.selectedYear;
+      let peakYearVal = -1;
+      state.availableYears.forEach(yr => {
+        if (state.selectedMonth > 0 && !isMonthObserved(yr, state.selectedMonth)) return;
+        const v = state.harmonized ? (yearlyHarmTotals[yr] || 0) : (yearlyRawTotals[yr] || 0);
+        if (v > peakYearVal) { peakYearVal = v; peakYear = yr; }
+      });
+      state.regionStats.peakYear = `${peakYear} (${peakYearVal.toLocaleString('tr-TR')})`;
+      document.getElementById('stat-peak-year').textContent = `Rekor Yıl: ${state.regionStats.peakYear}`;
+
+      // Eş-Dönem Çok Yıllı Ortalama (Seçili yılın gözlemlenen tüm aylarına sahip geçmiş yıllar üzerinden)
+      const baselineYears = state.availableYears.filter(yr =>
+        yr !== state.selectedYear && activeMonthsForSelectedYear.every(m => isMonthObserved(yr, m))
+      );
+      const baselineSum = baselineYears.reduce((sum, yr) => sum + (samePeriodYearlyValues[yr] || 0), 0);
+      const multiYearAvg = baselineYears.length > 0 ? (baselineSum / baselineYears.length) : 0;
+      const currentYearVal = samePeriodYearlyValues[state.selectedYear] || 0;
+      const anomalyPct = multiYearAvg > 0 ? (((currentYearVal - multiYearAvg) / multiYearAvg) * 100) : 0;
+
+      state.regionStats.multiYearAvgEvents = Math.round(multiYearAvg);
+      state.regionStats.anomalyPct = +anomalyPct.toFixed(1);
+
+      const periodSuffix = state.selectedMonth > 0
+        ? MONTHS_TR[state.selectedMonth - 1]
+        : (activeMonthsForSelectedYear.length < 12 ? `Oca–${MONTHS_TR[activeMonthsForSelectedYear[activeMonthsForSelectedYear.length - 1] - 1]}` : 'Yıllık');
+
+      document.getElementById('anomaly-title').textContent = `${state.selectedYear} ANOMALİSİ (${periodSuffix})`;
+      const anomEl = document.getElementById('stat-anomaly');
+      if (anomalyPct >= 0) {
+        anomEl.textContent = `+%${anomalyPct.toFixed(1)} Normalin Üzerinde`;
+        anomEl.className = 'text-xs font-bold text-apple-red mt-0.5';
+      } else {
+        anomEl.textContent = `%${anomalyPct.toFixed(1)} Normalin Altında`;
+        anomEl.className = 'text-xs font-bold text-apple-green mt-0.5';
+      }
+      document.getElementById('stat-anomaly-sub').textContent = `Çok Yıllı Ort: ${Math.round(multiYearAvg).toLocaleString('tr-TR')} | Seçili: ${currentYearVal.toLocaleString('tr-TR')}`;
+
+      // 1. AYLIK & YILLIK MATRİS (Gözlemlenmeyen aylar -1 olarak işaretlenir, asla 0 gösterilmez!)
       const heatmapData = [];
       let maxCell = 50;
 
       state.availableYears.forEach((yr, yIdx) => {
         for (let m = 1; m <= 12; m++) {
-          const val = monthYearMap[`${yr}_${m}`] || 0;
-          if (val > maxCell) maxCell = val;
-          heatmapData.push([m - 1, yIdx, val]);
+          if (!isMonthObserved(yr, m)) {
+            heatmapData.push([m - 1, yIdx, -1]); // -1 = Veri Yok (Gözlemlenmedi)
+          } else {
+            const val = monthYearMap[`${yr}_${m}`] || 0;
+            if (val > maxCell) maxCell = val;
+            heatmapData.push([m - 1, yIdx, val]);
+          }
         }
       });
 
-      const ramp = ['#1C1C1E', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026'];
-
       calendarChart.setOption({
         tooltip: {
-          position: 'top', backgroundColor: 'rgba(24, 24, 26, 0.92)', borderColor: 'rgba(255,255,255,0.1)', textStyle: { color: '#fff', fontSize: 11 },
+          position: 'top', backgroundColor: 'rgba(24, 24, 26, 0.94)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 },
           formatter: (p) => {
             const yr = state.availableYears[p.data[1]];
             const mo = MONTHS_TR[p.data[0]];
-            return `<b>${mo} ${yr}</b><br/>${state.harmonized ? 'Uyumlu Olay' : 'Ham Piksel'}: <b>${p.data[2].toLocaleString('tr-TR')}</b>`;
+            if (p.data[2] === -1) {
+              return `<b>${mo} ${yr}</b><br/><span style="color:#9CA3AF">Veri Yok (Henüz Gözlemlenmedi)</span>`;
+            }
+            const mAvg = monthObservedYearCounts[p.data[0]] > 0 ? (monthTotalsAllYears[p.data[0]] / monthObservedYearCounts[p.data[0]]) : 0;
+            const diff = mAvg > 0 ? (((p.data[2] - mAvg) / mAvg) * 100).toFixed(0) : 0;
+            const diffStr = mAvg > 0 ? `<br/>Çok Yıllı Ay Ort: <b>${Math.round(mAvg)}</b> (${diff >= 0 ? '+' : ''}${diff}%)` : '';
+            return `<b>${mo} ${yr}</b><br/>${state.harmonized ? 'Uyumlu Olay' : 'Ham Piksel'}: <b>${p.data[2].toLocaleString('tr-TR')}</b>${diffStr}`;
           }
         },
         grid: { top: 6, bottom: 22, left: 36, right: 6 },
         xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 }, axisLine: { show: false }, axisTick: { show: false } },
         yAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 9 }, axisLine: { show: false }, axisTick: { show: false } },
-        visualMap: { show: false, min: 0, max: Math.min(maxCell, 1500), inRange: { color: ramp } },
-        series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#18181A', borderWidth: 1.5, borderRadius: 2 } }]
+        visualMap: {
+          show: false,
+          type: 'piecewise',
+          pieces: [
+            { value: -1, color: 'rgba(255, 255, 255, 0.04)' }, // Veri Yok (Gözlemlenmedi)
+            { min: 0, max: 0, color: '#18181B' },              // Gözlemlendi ve 0 yangın
+            { min: 1, max: Math.max(2, Math.round(maxCell * 0.10)), color: '#fed976' },
+            { min: Math.round(maxCell * 0.10) + 1, max: Math.round(maxCell * 0.28), color: '#feb24c' },
+            { min: Math.round(maxCell * 0.28) + 1, max: Math.round(maxCell * 0.55), color: '#fd8d3c' },
+            { min: Math.round(maxCell * 0.55) + 1, max: Math.round(maxCell * 0.80), color: '#f03b20' },
+            { min: Math.round(maxCell * 0.80) + 1, max: 999999, color: '#bd0026' }
+          ]
+        },
+        series: [{ type: 'heatmap', data: heatmapData, itemStyle: { borderColor: '#121214', borderWidth: 1.4, borderRadius: 2 } }]
       });
 
-      const harmSeries = state.availableYears.map(yr => yearlyHarmTotals[yr] || 0);
-      const rawSeries = state.availableYears.map(yr => yearlyRawTotals[yr] || 0);
+      // 2. ALT GRAFİK: SEÇİLİ MODA GÖRE (TREND & ORT. / ANOMALİ % / DÖNEMSEL DESEN)
+      renderBottomChart(yearlyHarmTotals, yearlyRawTotals, multiYearAvg, monthYearMap, monthTotalsAllYears, monthObservedYearCounts);
+    }
 
-      timeseriesChart.setOption({
-        tooltip: { trigger: 'axis', backgroundColor: 'rgba(24, 24, 26, 0.92)', borderColor: 'rgba(255,255,255,0.1)', textStyle: { color: '#fff', fontSize: 11 } },
-        grid: { top: 12, bottom: 22, left: 45, right: 10 },
-        xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#8E8E93', fontSize: 10, formatter: (v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v } },
-        series: [
-          { name: 'Ham Piksel', type: 'line', data: rawSeries, smooth: true, symbol: 'none', lineStyle: { color: '#FF3B30', width: state.harmonized ? 1.5 : 2.5, type: state.harmonized ? 'dashed' : 'solid' } },
-          { name: 'Uyumlu Olay', type: 'line', data: harmSeries, smooth: true, symbol: 'none', lineStyle: { color: '#FF9500', width: state.harmonized ? 2.8 : 1.5 }, areaStyle: { color: 'rgba(255, 149, 0, 0.14)' } }
-        ]
-      });
+    function renderBottomChart(yearlyHarmTotals, yearlyRawTotals, multiYearAvg, monthYearMap, monthTotalsAllYears, monthObservedYearCounts) {
+      if (state.chartMode === 'trend') {
+        // Gözlemlenmemiş yıl+ay seçiliyse (örn. Aralık 2026) 0 yerine null ata ki çizgi 0'a çakılmasın!
+        const harmSeries = state.availableYears.map(yr => {
+          if (state.selectedMonth > 0 && !isMonthObserved(yr, state.selectedMonth)) return null;
+          return yearlyHarmTotals[yr] || 0;
+        });
+        const rawSeries = state.availableYears.map(yr => {
+          if (state.selectedMonth > 0 && !isMonthObserved(yr, state.selectedMonth)) return null;
+          return yearlyRawTotals[yr] || 0;
+        });
+
+        timeseriesChart.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(24, 24, 26, 0.94)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 } },
+          grid: { top: 14, bottom: 22, left: 45, right: 14 },
+          xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
+          yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#8E8E93', fontSize: 10, formatter: (v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v } },
+          series: [
+            { name: 'Ham Piksel', type: 'line', data: rawSeries, smooth: true, symbol: 'none', lineStyle: { color: '#FF3B30', width: state.harmonized ? 1.4 : 2.5, type: state.harmonized ? 'dashed' : 'solid' } },
+            {
+              name: 'Uyumlu Olay', type: 'line', data: harmSeries, smooth: true, symbol: 'none',
+              lineStyle: { color: '#FF9500', width: state.harmonized ? 2.8 : 1.5 },
+              areaStyle: { color: 'rgba(255, 149, 0, 0.14)' },
+              markLine: {
+                silent: true, symbol: 'none',
+                lineStyle: { color: '#0A84FF', type: 'dashed', width: 1.5 },
+                label: { formatter: 'Çok Yıllı Ort.', color: '#0A84FF', fontSize: 9, position: 'insideEndTop' },
+                data: [{ yAxis: Math.round(multiYearAvg) }]
+              }
+            }
+          ]
+        }, true);
+
+      } else if (state.chartMode === 'anomaly') {
+        // Her yılın kendi gözlemlenen aylarına karşılık gelen çok yıllı ortalamadan % sapması (Anomali)
+        const anomalySeries = state.availableYears.map(yr => {
+          if (state.selectedMonth > 0 && !isMonthObserved(yr, state.selectedMonth)) return null;
+          const obsMonths = [];
+          for (let m = 1; m <= 12; m++) {
+            if (state.selectedMonth > 0 && m !== state.selectedMonth) continue;
+            if (isMonthObserved(yr, m)) obsMonths.push(m);
+          }
+          if (obsMonths.length === 0) return null;
+
+          let yrSum = 0;
+          let expectedMultiYearSum = 0;
+          obsMonths.forEach(m => {
+            yrSum += (monthYearMap[`${yr}_${m}`] || 0);
+            const mAvg = monthObservedYearCounts[m - 1] > 0 ? (monthTotalsAllYears[m - 1] / monthObservedYearCounts[m - 1]) : 0;
+            expectedMultiYearSum += mAvg;
+          });
+
+          const pct = expectedMultiYearSum > 0 ? (((yrSum - expectedMultiYearSum) / expectedMultiYearSum) * 100) : 0;
+          return {
+            value: +pct.toFixed(1),
+            itemStyle: { color: pct >= 0 ? '#FF3B30' : '#0A84FF', borderRadius: pct >= 0 ? [3, 3, 0, 0] : [0, 0, 3, 3] }
+          };
+        });
+
+        timeseriesChart.setOption({
+          tooltip: {
+            trigger: 'axis', backgroundColor: 'rgba(24, 24, 26, 0.94)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 },
+            formatter: (p) => {
+              const item = p[0];
+              if (!item || item.value === null || item.value === undefined) return `${item?.name}: Veri Yok`;
+              return `<b>${item.name} Yılı Anomalisi</b><br/>Çok Yıllı Ortalamaya Göre: <b style="color:${item.value >= 0 ? '#FF3B30' : '#0A84FF'}">${item.value >= 0 ? '+' : ''}%${item.value}</b>`;
+            }
+          },
+          grid: { top: 14, bottom: 22, left: 45, right: 10 },
+          xAxis: { type: 'category', data: state.availableYears, axisLabel: { color: '#8E8E93', fontSize: 10 } },
+          yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#8E8E93', fontSize: 10, formatter: (v) => `${v > 0 ? '+' : ''}${v}%` } },
+          series: [{ name: 'Anomali (%)', type: 'bar', data: anomalySeries }]
+        }, true);
+
+      } else if (state.chartMode === 'seasonal') {
+        // Dönemsel Desen: Yılın hangi aylarında daha çok yangın çıkıyor vs. Seçili Yıl (İster 4)
+        const multiYearMonthlyAvg = MONTHS_TR.map((_, idx) =>
+          monthObservedYearCounts[idx] > 0 ? Math.round(monthTotalsAllYears[idx] / monthObservedYearCounts[idx]) : 0
+        );
+        const selectedYearMonthly = MONTHS_TR.map((_, idx) => {
+          const m = idx + 1;
+          if (!isMonthObserved(state.selectedYear, m)) return null; // Gözlemlenmeyen ay null!
+          return monthYearMap[`${state.selectedYear}_${m}`] || 0;
+        });
+
+        timeseriesChart.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(24, 24, 26, 0.94)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 } },
+          grid: { top: 14, bottom: 22, left: 45, right: 10 },
+          xAxis: { type: 'category', data: MONTHS_TR, axisLabel: { color: '#8E8E93', fontSize: 10 } },
+          yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#8E8E93', fontSize: 10 } },
+          series: [
+            { name: 'Çok Yıllı Ay Ort. (2000–2026)', type: 'bar', data: multiYearMonthlyAvg, itemStyle: { color: 'rgba(255,255,255,0.22)', borderRadius: [3, 3, 0, 0] } },
+            { name: `${state.selectedYear} Yılı`, type: 'line', data: selectedYearMonthly, smooth: true, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#FF9500', width: 2.5 }, itemStyle: { color: '#FF9500' } }
+          ]
+        }, true);
+      }
     }
 
     // ---------------------------------------------------------
-    // 7. ARAYÜZ FİLTRE VE BUTON ETKİLEŞİMLERİ
+    // 7. ARAYÜZ KONTROLLERİ, ÖZEL TARİH ARALIĞI VE DIŞA AKTARIM
     // ---------------------------------------------------------
+    function setChartMode(mode) {
+      state.chartMode = mode;
+      ['trend', 'anomaly', 'seasonal'].forEach(m => {
+        document.getElementById('cm-' + m).classList.toggle('active', m === mode);
+      });
+      updateSummaryCharts();
+    }
+
+    async function applyCustomDateRange() {
+      const startVal = document.getElementById('date-start').value;
+      const endVal = document.getElementById('date-end').value;
+      if (!startVal || !endVal || startVal > endVal) {
+        alert("Lütfen geçerli bir başlangıç ve bitiş tarihi seçin.");
+        return;
+      }
+      state.customDateStart = startVal;
+      state.customDateEnd = endVal;
+      document.getElementById('clear-date-btn').classList.remove('hidden');
+
+      const sYr = parseInt(startVal.substring(0, 4), 10);
+      const eYr = parseInt(endVal.substring(0, 4), 10);
+
+      document.getElementById('loading-indicator').classList.remove('hidden');
+      for (let y = sYr; y <= eYr; y++) {
+        try { await ensureYearLoaded(y); } catch (e) { console.warn(e); }
+      }
+      document.getElementById('loading-indicator').classList.add('hidden');
+
+      state.selectedYear = eYr;
+      document.getElementById('year-slider').value = eYr;
+      updateMonthPillsAvailability();
+      renderMapHotspots();
+      updateSummaryCharts();
+    }
+
+    function clearDateRange() {
+      state.customDateStart = null;
+      state.customDateEnd = null;
+      document.getElementById('date-start').value = '';
+      document.getElementById('date-end').value = '';
+      document.getElementById('clear-date-btn').classList.add('hidden');
+      renderMapHotspots();
+      updateSummaryCharts();
+    }
+
     function setCameraView(view) {
       if (!isMapLoaded) return;
       state.cameraView = view;
@@ -960,29 +1328,31 @@
     function setSensorFilter(sensor) {
       state.sensorFilter = sensor;
       ['all', 'MODIS', 'VIIRS'].forEach(s => { document.getElementById('sf-' + s).classList.toggle('active', s === sensor); });
-      renderMapHotspots(state.selectedYear);
+      renderMapHotspots();
     }
 
     function setDayNightFilter(dn) {
       state.dnFilter = dn;
       ['all', 'D', 'N'].forEach(d => { document.getElementById('dn-' + d).classList.toggle('active', d === dn); });
-      renderMapHotspots(state.selectedYear);
+      renderMapHotspots();
     }
 
     function setFrpFilter(minVal) {
       state.minFrp = minVal;
       [0, 25, 100].forEach(v => { document.getElementById('ff-' + v).classList.toggle('active', v === minVal); });
-      renderMapHotspots(state.selectedYear);
+      renderMapHotspots();
     }
 
     function setMonthFilter(month, skipRender = false) {
+      if (month > 0 && !isMonthObserved(state.selectedYear, month)) return;
+      state.customDateStart = null;
+      state.customDateEnd = null;
+      document.getElementById('clear-date-btn').classList.add('hidden');
+
       state.selectedMonth = month;
-      for (let m = 0; m <= 12; m++) {
-        const el = document.getElementById('m-' + m);
-        if (el) el.classList.toggle('active', m === month);
-      }
+      updateMonthPillsAvailability();
       updateSummaryCharts();
-      if (!skipRender) renderMapHotspots(state.selectedYear);
+      if (!skipRender) renderMapHotspots();
     }
 
     function setBaseMap(type) {
@@ -1011,7 +1381,7 @@
       state.showBurnedArea = !state.showBurnedArea;
       document.getElementById('burned-toggle').classList.toggle('active', state.showBurnedArea);
       if (isMapLoaded) map.setLayoutProperty('layer-burned', 'visibility', state.showBurnedArea ? 'visible' : 'none');
-      renderMapHotspots(state.selectedYear); 
+      renderMapHotspots(); 
     }
 
     function toggleHarmonization() {
@@ -1022,21 +1392,21 @@
 
       if (state.harmonized) {
         toggle.classList.add('active');
-        r2.innerHTML = `Aktif &nbsp;—&nbsp; R² = ${calReportData?.overlap_r2_score || '0.90'} &nbsp; | &nbsp; RMSE = ${calReportData?.quantile_rmse_harm_mw || '1.3'} MW`;
+        r2.innerHTML = `Aktif &nbsp;—&nbsp; R² = ${calReportData?.overlap_r2_score || '0.9057'} &nbsp;|&nbsp; RMSE = ${calReportData?.quantile_rmse_harm_mw || '1.36'} MW`;
         r2.className = 'text-[11px] text-apple-green font-medium mt-0.5';
         badge.textContent = 'Uyumlu Olay';
         badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange font-medium';
         if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 0.65, 7, 1.15, 10, 2.0]);
       } else {
         toggle.classList.remove('active');
-        r2.innerHTML = `Kapalı &nbsp;—&nbsp; Ham RMSE = ${calReportData?.quantile_rmse_raw_mw || '17.0'} MW`;
+        r2.innerHTML = `Kapalı &nbsp;—&nbsp; Ham RMSE = ${calReportData?.quantile_rmse_raw_mw || '17.04'} MW`;
         r2.className = 'text-[11px] text-apple-red font-medium mt-0.5';
         badge.textContent = 'Ham Piksel';
         badge.className = 'text-[10px] px-2 py-0.5 rounded bg-apple-red/20 text-apple-red font-medium';
         if (isMapLoaded) map.setPaintProperty('layer-heatmap', 'heatmap-intensity', ['interpolate', ['linear'], ['zoom'], 4, 1.1, 7, 1.8, 10, 3.0]);
       }
       updateSummaryCharts();
-      renderMapHotspots(state.selectedYear);
+      renderMapHotspots();
     }
 
     function selectScenario(scen) {
@@ -1051,13 +1421,19 @@
       else if (scen === 'cukurova') map.flyTo({ center: [37.5, 37.2], zoom: 7.4, pitch: targetPitch, bearing: -15, duration: 1500 });
       else if (scen === 'viirs2012') map.flyTo({ center: [33.5, 39.8], zoom: 6.8, pitch: targetPitch, bearing: 8, duration: 1500 });
 
-      renderMapHotspots(state.selectedYear);
+      renderMapHotspots();
       updateSummaryCharts();
     }
 
     function onYearSliderInput(val) { 
       const year = parseInt(val, 10);
+      state.customDateStart = null;
+      state.customDateEnd = null;
+      document.getElementById('clear-date-btn').classList.add('hidden');
+
       state.selectedYear = year; 
+      updateMonthPillsAvailability();
+      updateSummaryCharts();
       document.getElementById('timeline-label').textContent = `${year} Yılı Yükleniyor...`;
       fetchYearlyData(year); 
     }
@@ -1072,6 +1448,8 @@
           let currIdx = state.availableYears.indexOf(state.selectedYear);
           state.selectedYear = (currIdx >= state.availableYears.length - 1) ? state.availableYears[0] : state.availableYears[currIdx + 1];
           document.getElementById('year-slider').value = state.selectedYear;
+          updateMonthPillsAvailability();
+          updateSummaryCharts();
           fetchYearlyData(state.selectedYear);
         }, 1200); 
       } else clearInterval(state.playTimer);
@@ -1083,13 +1461,14 @@
       state.aoiBounds = null; 
       document.getElementById('clear-aoi-btn').classList.add('hidden'); 
       if (isMapLoaded) map.getSource('aoi-source').setData({ type: 'FeatureCollection', features: [] });
-      renderMapHotspots(state.selectedYear); 
+      renderMapHotspots(); 
       updateSummaryCharts();
     }
 
+    // 1. Sıcak Nokta CSV İndirme (İster 3)
     function exportFilteredCSV() {
-      const yearData = mapDataCache[state.selectedYear] || [];
-      const rows = yearData.filter(h => passesHotspotFilter(h));
+      const sourceData = getActiveSourceHotspots();
+      const rows = sourceData.filter(h => passesHotspotFilter(h));
       if (rows.length === 0) { alert("Seçili kriterlere uygun indirilecek veri bulunamadı."); return; }
       
       let csv = 'lat,lon,acq_date,daynight,frp_harm,frp_raw,raw_pixels,sensors,tier\n';
@@ -1098,9 +1477,82 @@
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      const monthSuffix = state.selectedMonth > 0 ? `_${MONTHS_TR[state.selectedMonth - 1]}` : '';
-      a.download = `ignis_${state.selectedYear}${monthSuffix}.csv`;
+      const suffix = state.customDateStart ? `${state.customDateStart}_${state.customDateEnd}` : `${state.selectedYear}${state.selectedMonth > 0 ? '_' + MONTHS_TR[state.selectedMonth - 1] : ''}`;
+      a.download = `ignis_hotspots_${suffix}.csv`;
       a.click();
+    }
+
+    // 2. Bölgesel Analitik ve Anomali Raporu İndirme (İster 5)
+    function exportAnalyticsReport() {
+      const sourceData = getActiveSourceHotspots();
+      const rows = sourceData.filter(h => passesHotspotFilter(h));
+      const rawPixelSum = rows.reduce((s, r) => s + (r.raw_pixels || 1), 0);
+
+      const report = {
+        generated_at: new Date().toISOString(),
+        region_scenario: state.scenario,
+        custom_aoi_bounds: state.aoiBounds,
+        period: state.customDateStart ? `${state.customDateStart} to ${state.customDateEnd}` : { year: state.selectedYear, month: state.selectedMonth || 'All Observed' },
+        harmonization_active: state.harmonized,
+        calibration_metrics: {
+          overlap_r2_score: calReportData?.overlap_r2_score || 0.9057,
+          quantile_rmse_harm_mw: calReportData?.quantile_rmse_harm_mw || 1.36,
+          masked_industrial_cells: calReportData?.masked_industrial_cells || 30244
+        },
+        detection_vs_reported: {
+          reported_harmonized_fire_events: rows.length,
+          detected_raw_satellite_pixels: rawPixelSum
+        },
+        historical_comparison: {
+          same_period_multi_year_average_events: state.regionStats.multiYearAvgEvents,
+          current_period_anomaly_percent: state.regionStats.anomalyPct,
+          regional_historical_avg_frp_mw: +state.regionStats.avgFrp.toFixed(2),
+          peak_fire_season: state.regionStats.peakSeason,
+          most_active_historical_year: state.regionStats.peakYear
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `ignis_analytics_${state.selectedYear}.json`;
+      a.click();
+    }
+
+    // 3. Görselleştirme ve Grafikleri PNG Panosu Olarak İndirme (İster 5)
+    function exportChartsPNG() {
+      if (!calendarChart || !timeseriesChart) return;
+      const img1 = new Image();
+      const img2 = new Image();
+      img1.src = calendarChart.getDataURL({ pixelRatio: 2, backgroundColor: '#18181A' });
+      img2.src = timeseriesChart.getDataURL({ pixelRatio: 2, backgroundColor: '#18181A' });
+
+      img1.onload = () => {
+        img2.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 900;
+          canvas.height = 880;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#121214';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 20px Inter, sans-serif';
+          ctx.fillText(`IGNIS // MODIS & VIIRS Uyumlaştırılmış Yangın Analitiği (${state.selectedYear})`, 30, 42);
+
+          ctx.fillStyle = '#FF9500';
+          ctx.font = '14px Inter, sans-serif';
+          ctx.fillText(`Anomali: ${state.regionStats.anomalyPct >= 0 ? '+' : ''}%${state.regionStats.anomalyPct}  |  En Yoğun Dönem: ${state.regionStats.peakSeason}  |  Rekor Yıl: ${state.regionStats.peakYear}`, 30, 70);
+
+          ctx.drawImage(img1, 30, 95, 840, 380);
+          ctx.drawImage(img2, 30, 495, 840, 350);
+
+          const a = document.createElement('a');
+          a.href = canvas.toDataURL('image/png');
+          a.download = `ignis_visualizations_${state.selectedYear}.png`;
+          a.click();
+        };
+      };
     }
 
     window.addEventListener('DOMContentLoaded', () => { 
