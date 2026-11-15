@@ -9,7 +9,7 @@
 
 ## 🔗 Project Links
 
-- 🌐 **Live Web Application:** [https://albay05.github.io/nasasa_seg_fault/](https://albay05.github.io/nasasa_seg_fault/)) *(or replace with your custom deployment URL)*
+- 🌐 **Live Web Application:** [https://albay05.github.io/nasasa_seg_fault/](https://albay05.github.io/nasasa_seg_fault/))
 - 💻 **GitHub Repository:** [[https://github.com/Albay05/nasasa_seg_fault](https://github.com/Albay05/nasasa_seg_fault)]
 - 📊 **Project Presentation (Google Slides):** [View Presentation Deck](https://docs.google.com/presentation/d/1C1AWhCjd8ulii4JeAeKQ3uI92vNq7v6W3HoCe6gSy3w/edit?usp=sharing)
 
