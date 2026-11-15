@@ -121,14 +121,14 @@
 
   <div id="map"></div>
 
-  <!-- AOI Çizim Bilgilendirme Banner (Sağ panele çarpmaması için harita alanına ortalı) -->
+  <!-- AOI Çizim Bilgilendirme Banner -->
   <div id="aoi-banner" class="hidden fixed top-16 left-4 z-[1000] ios-panel px-4 py-2 text-xs flex items-center gap-3">
     <span class="w-2 h-2 rounded-full bg-apple-orange animate-pulse"></span>
     <span data-i18n="aoiPrompt">Haritada sol tık basılı tutarak dikdörtgen alan (Bounding Box) sürükleyin.</span>
     <button type="button" onclick="cancelAOIDraw()" data-i18n="cancel" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
   </div>
 
-  <!-- ERKEN UYARI ÜST ALARM BANNER (Sağ panelle çakışmaması için sol üst barın hemen altında hizalı) -->
+  <!-- ERKEN UYARI ÜST ALARM BANNER -->
   <div id="critical-alert-banner" class="hidden fixed top-16 left-4 z-[950] ios-panel border-apple-red/50 px-3.5 py-2 text-xs flex items-center gap-2.5 pointer-events-auto max-w-[calc(100vw-450px)]">
     <span class="w-2 h-2 rounded-full bg-apple-red animate-ping shrink-0"></span>
     <span id="critical-banner-text" class="text-white font-medium truncate">KRİTİK YANGIN UYARISI: Yüksek yayılım riski tespit edildi.</span>
@@ -289,7 +289,7 @@
     <div class="flex items-center justify-between bg-apple-gray2/60 px-3 py-2 rounded-xl border border-white/10">
       <div class="flex flex-col">
         <span data-i18n="forecastLayerLbl" class="text-xs font-semibold text-white">72 Saatlik Risk & Yayılım Katmanı</span>
-        <span data-i18n="forecastLayerSub" class="text-[10px] text-gray-400">Haritada tehlike halkalarını ve rüzgar vektörünü göster</span>
+        <span data-i18n="forecastLayerSub" class="text-[10px] text-gray-400">Haritada coğrafi yayılım elipslerini ve rüzgar vektörünü göster</span>
       </div>
       <div id="forecast-layer-toggle" onclick="toggleForecastMapLayer()" class="ios-toggle">
         <div class="ios-toggle-knob"></div>
@@ -414,7 +414,7 @@
       </div>
     </div>
 
-    <!-- Aylık & Yıllık Yanma Matrisi (Taşma Önleyici Esnek Yapı) -->
+    <!-- Aylık & Yıllık Yanma Matrisi -->
     <div class="ios-panel p-3.5 flex flex-col flex-1 min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-1.5 shrink-0">
         <div>
@@ -488,7 +488,7 @@
       </div>
     </div>
 
-    <!-- SAĞ/ORTA ZAMAN ÇUBUĞU (Esnek Genişlik) -->
+    <!-- SAĞ/ORTA ZAMAN ÇUBUĞU -->
     <footer class="flex-1 min-w-[360px] max-w-[520px] ios-panel p-2.5 px-3.5 flex flex-col gap-1.5 pointer-events-auto">
       <div class="flex justify-between items-center gap-2">
         <button type="button" id="play-btn" onclick="togglePlayTimeline()" class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0 cursor-pointer">
@@ -581,7 +581,7 @@
         legJoint: 'Ortak',
         secAlertsTitle: 'Yangın Tahmin & Erken Uyarı Merkezi',
         forecastLayerLbl: '72 Saatlik Risk & Yayılım Katmanı',
-        forecastLayerSub: 'Haritada tehlike halkalarını ve rüzgar vektörünü göster',
+        forecastLayerSub: 'Haritada coğrafi yayılım elipslerini ve rüzgar vektörünü göster',
         fwiSimTitle: 'Meteorolojik Stres & FWI Simülasyonu',
         windSpeedLbl: 'Rüzgar Hızı:',
         humidityLbl: 'Bağıl Nem:',
@@ -647,7 +647,7 @@
         riskMod: 'ORTA',
         alertPopupTitle: 'Erken Uyarı & 72sa Yayılım Tahmini',
         probLbl: 'Büyüme Olasılığı',
-        spreadRadiusLbl: '72sa Yayılım Yarıçapı',
+        spreadRadiusLbl: '72sa Yayılım Menzili',
         focusMapBtn: 'Odakla'
       },
       en: {
@@ -683,7 +683,7 @@
         legJoint: 'Joint',
         secAlertsTitle: 'Fire Forecast & Early Warning Center',
         forecastLayerLbl: '72h Risk & Spread Map Layer',
-        forecastLayerSub: 'Render danger perimeters & wind vectors on map',
+        forecastLayerSub: 'Render geographic spread ellipses & wind vectors on map',
         fwiSimTitle: 'Meteorological Stress & FWI Simulation',
         windSpeedLbl: 'Wind Speed:',
         humidityLbl: 'Rel. Humidity:',
@@ -749,7 +749,7 @@
         riskMod: 'MODERATE',
         alertPopupTitle: 'Early Warning & 72h Spread Forecast',
         probLbl: 'Escalation Prob.',
-        spreadRadiusLbl: '72h Spread Radius',
+        spreadRadiusLbl: '72h Spread Reach',
         focusMapBtn: 'Focus'
       }
     };
@@ -1279,8 +1279,8 @@
           maxzoom: 13
         });
 
-        if (state.cameraView === '3d') {
-          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
+        if (state.cameraView === '3d' && state.mapMode !== 'extrusion') {
+          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
         }
 
         if (map.setSky) {
@@ -1322,7 +1322,7 @@
           source: 'burned-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 10, 32],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 10, 26],
             'circle-color': '#180B08',
             'circle-opacity': 0.78,
             'circle-stroke-width': 1.5,
@@ -1353,6 +1353,7 @@
           }
         });
 
+        // 3B Altıgen (Hexbin) Sütun Katmanı (Optimize Edilmiş Yükseklik ve Renk Skalası)
         map.addLayer({
           id: 'layer-extrusion',
           type: 'fill-extrusion',
@@ -1361,11 +1362,16 @@
           paint: {
             'fill-extrusion-color': [
               'interpolate', ['linear'], ['get', 'totalFrp'],
-              0, '#9900FF', 80, '#FF0055', 250, '#FF5500', 600, '#FFCC00', 1500, '#FFFFFF'
+              0, '#7A00CC',
+              40, '#E6005C',
+              120, '#FF3B00',
+              300, '#FF9500',
+              700, '#FFEE00',
+              1500, '#FFFFFF'
             ],
             'fill-extrusion-height': ['get', 'height'],
             'fill-extrusion-base': 0,
-            'fill-extrusion-opacity': 0.88
+            'fill-extrusion-opacity': 0.90
           }
         });
 
@@ -1388,38 +1394,46 @@
           }
         });
 
-        // 72 Saatlik Yangın Risk Halkaları Katmanı
+        // 72 Saatlik Gerçek Coğrafi Ölçekli Yangın Yayılım Poligonları (Dolgu + Çizgi)
         map.addLayer({
           id: 'layer-forecast-zones',
-          type: 'circle',
+          type: 'fill',
           source: 'forecast-zones-data',
           layout: { visibility: 'none' },
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['*', ['get', 'spreadKm'], 1.4], 9, ['*', ['get', 'spreadKm'], 5.2]],
-            'circle-color': [
-              'case',
-              ['==', ['get', 'level'], 'EXTREME'], 'rgba(255, 59, 48, 0.24)',
-              'rgba(255, 149, 0, 0.20)'
-            ],
-            'circle-stroke-width': 2,
-            'circle-stroke-color': [
+            'fill-color': [
               'case',
               ['==', ['get', 'level'], 'EXTREME'], '#FF3B30',
               '#FF9500'
-            ]
+            ],
+            'fill-opacity': 0.24
           }
         });
 
-        // Rüzgar Yönlü Tahmini Yayılım Vektörleri Katmanı
+        map.addLayer({
+          id: 'layer-forecast-zones-stroke',
+          type: 'line',
+          source: 'forecast-zones-data',
+          layout: { visibility: 'none' },
+          paint: {
+            'line-color': [
+              'case',
+              ['==', ['get', 'level'], 'EXTREME'], '#FF3B30',
+              '#FF9500'
+            ],
+            'line-width': 1.8
+          }
+        });
+
+        // Rüzgar Yönlü Tahmini Yayılım Vektörleri (Merkezden Elips Ucuna Kadar)
         map.addLayer({
           id: 'layer-forecast-vectors',
           type: 'line',
           source: 'forecast-vectors-data',
-          layout: { visibility: 'none', 'line-cap': 'round' },
+          layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
           paint: {
             'line-color': '#FFE600',
-            'line-width': 2.2,
-            'line-dasharray': [2, 2]
+            'line-width': 2.2
           }
         });
 
@@ -1457,6 +1471,8 @@
 
         map.on('mouseenter', 'layer-hit', () => { if (!drawingAOI && !isDraggingBox) map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'layer-hit', () => { if (!drawingAOI && !isDraggingBox) map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', 'layer-extrusion', () => { if (!drawingAOI && !isDraggingBox) map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'layer-extrusion', () => { if (!drawingAOI && !isDraggingBox) map.getCanvas().style.cursor = ''; });
 
         initBoundingBoxDragEvents();
         renderMapHotspots();
@@ -1468,6 +1484,52 @@
         if (drawingAOI || isDraggingBox) return;
         closeAllPopovers();
 
+        const isTr = state.lang === 'tr';
+        const latUnit = isTr ? '°K' : '°N';
+        const lonUnit = isTr ? '°D' : '°E';
+
+        // Eğer 3B Sütun Modu Aktifse Sütun Kümesi Popup'ını Göster
+        if (state.mapMode === 'extrusion') {
+          const extFeatures = map.queryRenderedFeatures(e.point, { layers: ['layer-extrusion'] });
+          if (extFeatures.length > 0) {
+            const p = extFeatures[0].properties;
+            const cLon = Number(p.lon);
+            const cLat = Number(p.lat);
+            const totFrp = Number(p.totalFrp);
+            const cnt = Number(p.count);
+            const maxF = Number(p.maxFrp);
+            const avgF = cnt > 0 ? (totFrp / cnt) : 0;
+
+            const html = `
+              <div class="flex flex-col gap-2 text-xs">
+                <div class="flex items-center justify-between border-b border-white/10 pb-1.5 pr-4">
+                  <span class="font-semibold text-white flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-apple-orange inline-block"></span>
+                    ${isTr ? '3B Altıgen Küme Analizi' : '3D Hexbin Cluster Analysis'}
+                  </span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-apple-orange/20 text-apple-orange border border-apple-orange/40 font-semibold">${cnt} ${isTr ? 'Olay' : 'Events'}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-y-1.5 text-[11px]">
+                  <span class="text-gray-400">${isTr ? 'Küme Merkezi:' : 'Cluster Center:'}</span>
+                  <span class="text-right font-mono text-gray-200">${cLat.toFixed(3)}${latUnit}, ${cLon.toFixed(3)}${lonUnit}</span>
+                  <span class="text-gray-400">${isTr ? 'Toplam Enerji (FRP):' : 'Total Radiative Power:'}</span>
+                  <span class="text-right font-bold text-apple-orange">${totFrp.toFixed(1)} MW</span>
+                  <span class="text-gray-400">${isTr ? 'Küme Ort. / Maks FRP:' : 'Cluster Mean / Max:'}</span>
+                  <span class="text-right text-white">${avgF.toFixed(1)} / ${maxF.toFixed(1)} MW</span>
+                  <span class="text-gray-400">${isTr ? 'Baskın Sensör:' : 'Dominant Sensor:'}</span>
+                  <span class="text-right text-gray-300">${p.sensor || 'MODIS+VIIRS'}</span>
+                </div>
+              </div>
+            `;
+            if (activePopup) activePopup.remove();
+            activePopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '305px' })
+              .setLngLat([cLon, cLat])
+              .setHTML(html)
+              .addTo(map);
+            return;
+          }
+        }
+
         const features = map.queryRenderedFeatures(e.point, { layers: ['layer-hit'] });
         if (!features.length) return;
 
@@ -1478,7 +1540,6 @@
         const ratio = fireFrp / Math.max(regAvg, 0.1);
         const diffPct = ((fireFrp - regAvg) / Math.max(regAvg, 0.1)) * 100;
 
-        const isTr = state.lang === 'tr';
         const compText = diffPct >= 0
           ? `<span class="text-apple-red font-semibold">${ratio.toFixed(1)}x ${isTr ? 'Bölge Ort.' : 'Region Avg'} (+%${diffPct.toFixed(0)})</span>`
           : `<span class="text-apple-green font-semibold">${isTr ? 'Ort. Altında' : 'Below Avg'} (%${diffPct.toFixed(0)})</span>`;
@@ -1488,8 +1549,6 @@
           : (props.sensor.includes('VIIRS') ? 'bg-[#FF2A55]/20 text-[#FF2A55] border-[#FF2A55]/40' : 'bg-apple-orange/20 text-apple-orange border-apple-orange/40');
 
         const dnText = props.daynight === 'N' ? (isTr ? 'Gece (N)' : 'Night (N)') : (isTr ? 'Gündüz (D)' : 'Day (D)');
-        const latUnit = isTr ? '°K' : '°N';
-        const lonUnit = isTr ? '°D' : '°E';
 
         const html = `
           <div class="flex flex-col gap-2 text-xs">
@@ -1626,7 +1685,7 @@
     }
 
     // ---------------------------------------------------------
-    // 5. YANGIN TAHMİN, FWI SİMÜLASYONU VE HARİTA ÇİZİM MOTORU
+    // 5. GERÇEK COĞRAFİ ÖLÇEKLİ YANGIN YAYILIM MODELİ VE 3B ALTIGEN SÜTUNLAR
     // ---------------------------------------------------------
     function computeFwiScore() {
       const w = state.weatherSim.windSpeed;
@@ -1634,6 +1693,64 @@
       const tAnom = state.weatherSim.tempAnomaly;
       const rawScore = (w * 0.72) + ((100 - h) * 0.48) + (tAnom * 6.2);
       return Math.min(99, Math.max(8, Math.round(rawScore)));
+    }
+
+    // Rüzgar Yönüne Göre Gerçek Coğrafi (km -> derece) Eliptik Yayılım Poligonu ve Ok Üretici
+    function buildDirectionalSpreadGeo(lon, lat, spreadKm, dirCode) {
+      const dirAngles = {
+        NE: Math.PI / 4,
+        NW: (3 * Math.PI) / 4,
+        SW: (-3 * Math.PI) / 4,
+        SE: -Math.PI / 4
+      };
+      const theta = dirAngles[dirCode] !== undefined ? dirAngles[dirCode] : (-3 * Math.PI) / 4;
+      const cosLat = Math.max(0.4, Math.cos((lat * Math.PI) / 180));
+
+      // Türkiye ölçeğinde (Zoom 5.8) görünür, yakınlaşınca gerçekçi (6 km - 22 km) eliptik koni
+      const forwardKm = Math.max(6.0, spreadKm * 1.35);
+      const backKm = Math.max(2.2, spreadKm * 0.35);
+      const sideKm = Math.max(3.5, spreadKm * 0.62);
+
+      const shiftKmX = ((forwardKm - backKm) * 0.5) * Math.cos(theta);
+      const shiftKmY = ((forwardKm - backKm) * 0.5) * Math.sin(theta);
+      const semiMajorKm = (forwardKm + backKm) * 0.5;
+      const semiMinorKm = sideKm;
+
+      const ring = [];
+      const steps = 28;
+      for (let i = 0; i <= steps; i++) {
+        const phi = (i / steps) * 2 * Math.PI;
+        const lx = semiMajorKm * Math.cos(phi);
+        const ly = semiMinorKm * Math.sin(phi);
+
+        const rx = shiftKmX + (lx * Math.cos(theta) - ly * Math.sin(theta));
+        const ry = shiftKmY + (lx * Math.sin(theta) + ly * Math.cos(theta));
+
+        const pLon = lon + rx / (111.32 * cosLat);
+        const pLat = lat + ry / 111.32;
+        ring.push([+pLon.toFixed(5), +pLat.toFixed(5)]);
+      }
+
+      // Rüzgar Vektörü Ok Ucu (Merkezden İleri Uca Kadar)
+      const tipKm = forwardKm * 0.88;
+      const tipLon = lon + (tipKm * Math.cos(theta)) / (111.32 * cosLat);
+      const tipLat = lat + (tipKm * Math.sin(theta)) / 111.32;
+
+      const headLenKm = Math.max(1.8, tipKm * 0.28);
+      const leftWingLon = tipLon - (headLenKm * Math.cos(theta - 0.45)) / (111.32 * cosLat);
+      const leftWingLat = tipLat - (headLenKm * Math.sin(theta - 0.45)) / 111.32;
+      const rightWingLon = tipLon - (headLenKm * Math.cos(theta + 0.45)) / (111.32 * cosLat);
+      const rightWingLat = tipLat - (headLenKm * Math.sin(theta + 0.45)) / 111.32;
+
+      const arrowCoords = [
+        [lon, lat],
+        [+tipLon.toFixed(5), +tipLat.toFixed(5)],
+        [+leftWingLon.toFixed(5), +leftWingLat.toFixed(5)],
+        [+tipLon.toFixed(5), +tipLat.toFixed(5)],
+        [+rightWingLon.toFixed(5), +rightWingLat.toFixed(5)]
+      ];
+
+      return { ring, arrowCoords };
     }
 
     function updateWeatherSim() {
@@ -1664,6 +1781,7 @@
       if (isMapLoaded) {
         const vis = state.showForecastLayer ? 'visible' : 'none';
         map.setLayoutProperty('layer-forecast-zones', 'visibility', vis);
+        map.setLayoutProperty('layer-forecast-zones-stroke', 'visibility', vis);
         map.setLayoutProperty('layer-forecast-vectors', 'visibility', vis);
       }
       updateCriticalBannerVisibility();
@@ -1703,27 +1821,27 @@
         if (h.date > cellMap[key].lastDate) cellMap[key].lastDate = h.date;
       });
 
-      const dirOffsets = {
-        SW: { dLon: -0.14, dLat: -0.11 },
-        NW: { dLon: -0.14, dLat: 0.11 },
-        NE: { dLon: 0.14, dLat: 0.11 },
-        SE: { dLon: 0.14, dLat: -0.11 }
-      };
-      const vec = dirOffsets[state.weatherSim.windDir] || dirOffsets.SW;
-      const windFactor = state.weatherSim.windSpeed / 35.0;
+      const windFactor = 0.65 + (state.weatherSim.windSpeed / 55.0);
 
+      // Logaritmik Sönümlemeli Gerçekçi Yayılım Menzili (3.0 km – 16.5 km arası, devasa daire oluşmaz)
       const alerts = Object.values(cellMap).map(c => {
-        const intensityScore = Math.min(45, (c.maxFrp * 0.22) + (c.count * 2.4));
-        const prob = Math.min(98, Math.max(25, Math.round(intensityScore + (fwi * 0.56))));
-        const spreadKm = +(Math.max(2.5, (c.maxFrp * 0.04 + 3.2) * windFactor * (fwi / 45.0))).toFixed(1);
+        const logEnergy = Math.log10(Math.max(1, c.maxFrp) + 1) * 14;
+        const densityScore = Math.min(22, Math.sqrt(c.count) * 4.2);
+        const prob = Math.min(98, Math.max(25, Math.round(logEnergy + densityScore + (fwi * 0.52))));
+
+        const baseKm = 2.8 + Math.log10(Math.max(1, c.maxFrp) + 1) * 2.6 + Math.min(3.0, Math.sqrt(c.count) * 0.55);
+        const spreadKm = +(Math.min(16.5, Math.max(3.0, baseKm * windFactor * (0.75 + fwi / 140.0)))).toFixed(1);
+
         const level = prob >= 78 ? 'EXTREME' : (prob >= 58 ? 'HIGH' : 'MODERATE');
+        const geo = buildDirectionalSpreadGeo(c.lon, c.lat, spreadKm, state.weatherSim.windDir);
+
         return {
           ...c,
           prob,
           spreadKm,
           level,
-          endLon: +(c.lon + vec.dLon * windFactor).toFixed(4),
-          endLat: +(c.lat + vec.dLat * windFactor).toFixed(4)
+          ring: geo.ring,
+          arrowCoords: geo.arrowCoords
         };
       }).sort((a, b) => b.prob - a.prob).slice(0, 12);
 
@@ -1783,14 +1901,14 @@
       if (isMapLoaded && map.getSource('forecast-zones-data')) {
         const zoneFeatures = alerts.map(a => ({
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
+          geometry: { type: 'Polygon', coordinates: [a.ring] },
           properties: { spreadKm: a.spreadKm, level: a.level, prob: a.prob }
         }));
         const vectorFeatures = alerts.map(a => ({
           type: 'Feature',
           geometry: {
             type: 'LineString',
-            coordinates: [[a.lon, a.lat], [a.endLon, a.endLat]]
+            coordinates: a.arrowCoords
           },
           properties: { level: a.level }
         }));
@@ -1810,7 +1928,7 @@
       }
       closeAllPopovers();
 
-      map.flyTo({ center: [alertItem.lon, alertItem.lat], zoom: 8.2, duration: 1100 });
+      map.flyTo({ center: [alertItem.lon, alertItem.lat], zoom: 8.5, duration: 1100 });
 
       const isTr = state.lang === 'tr';
       const html = `
@@ -1857,32 +1975,58 @@
       triggerDownloadLink(blob, `alaz_early_warning_bulletin_${state.selectedYear}.csv`);
     }
 
+    // 3B Sütunlar İçin Enlem Düzeltmeli Altıgen Prizma (Hexbin) ve Karekök Yükseklik Motoru
     function buildExtrusionGeoJSON(filtered) {
-      const step = 0.08; 
-      const r = 0.032;
+      const stepLat = 0.06;
+      const stepLon = 0.075;
+      const radiusLat = 0.024;
       const bins = {};
 
       filtered.forEach(d => {
-        const bx = Math.round(d.lon / step) * step;
-        const by = Math.round(d.lat / step) * step;
-        const key = `${bx.toFixed(2)}_${by.toFixed(2)}`;
-        if (!bins[key]) bins[key] = { lon: bx, lat: by, totalFrp: 0, count: 0 };
+        const by = Math.round(d.lat / stepLat) * stepLat;
+        const bx = Math.round(d.lon / stepLon) * stepLon;
+        const key = `${bx.toFixed(3)}_${by.toFixed(3)}`;
+        if (!bins[key]) {
+          bins[key] = { lon: bx, lat: by, totalFrp: 0, maxFrp: 0, count: 0, sensor: d.sensor };
+        }
         const checkFrp = state.harmonized ? d.frp_harm : d.frp_raw;
         bins[key].totalFrp += checkFrp;
+        if (checkFrp > bins[key].maxFrp) bins[key].maxFrp = checkFrp;
         bins[key].count += 1;
       });
 
       const features = Object.values(bins).map(b => {
-        const height = Math.min(65000, Math.max(1500, b.totalFrp * 65));
+        const cosLat = Math.max(0.5, Math.cos((b.lat * Math.PI) / 180));
+        const radiusLon = radiusLat / cosLat;
+
+        // Altıgen (Hexagon) Taban Koordinatları
+        const hexRing = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i + (Math.PI / 6);
+          const vx = +(b.lon + radiusLon * Math.cos(angle)).toFixed(5);
+          const vy = +(b.lat + radiusLat * Math.sin(angle)).toFixed(5);
+          hexRing.push([vx, vy]);
+        }
+        hexRing.push(hexRing[0]);
+
+        // Karekök Sönümlemeli Yükseklik (600 m - 14.000 m arası dengeli 3B sütunlar)
+        const height = Math.round(Math.min(14000, Math.max(600, Math.sqrt(b.totalFrp) * 340 + b.count * 95)));
+
         return {
           type: 'Feature',
           geometry: {
             type: 'Polygon',
-            coordinates: [[
-              [b.lon - r, b.lat - r], [b.lon + r, b.lat - r], [b.lon + r, b.lat + r], [b.lon - r, b.lat + r], [b.lon - r, b.lat - r]
-            ]]
+            coordinates: [hexRing]
           },
-          properties: { totalFrp: +b.totalFrp.toFixed(1), count: b.count, height: height }
+          properties: {
+            lon: +b.lon.toFixed(4),
+            lat: +b.lat.toFixed(4),
+            totalFrp: +b.totalFrp.toFixed(1),
+            maxFrp: +b.maxFrp.toFixed(1),
+            count: b.count,
+            sensor: b.sensor,
+            height: height
+          }
         };
       });
 
@@ -2466,11 +2610,16 @@
       });
 
       if (view === '3d') {
-        map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
-        map.easeTo({ pitch: 54, bearing: -8, duration: 1000 });
+        // Sütun modundayken dağların sütunları yutmaması için terrain kapalı tutulup 3B kamera açısı verilir
+        if (state.mapMode === 'extrusion') {
+          map.setTerrain(null);
+        } else {
+          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
+        }
+        map.easeTo({ pitch: 52, bearing: -10, duration: 900 });
       } else {
         map.setTerrain(null);
-        map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
+        map.easeTo({ pitch: 0, bearing: 0, duration: 850 });
       }
     }
 
@@ -2522,7 +2671,17 @@
         map.setLayoutProperty('layer-extrusion', 'visibility', mode === 'extrusion' ? 'visible' : 'none');
         map.setLayoutProperty('layer-sensor', 'visibility', mode === 'sensor' ? 'visible' : 'none');
 
-        if (mode === 'extrusion' && map.getPitch() < 35) setCameraView('3d');
+        if (mode === 'extrusion') {
+          map.setTerrain(null);
+          if (map.getPitch() < 35) {
+            state.cameraView = '3d';
+            document.getElementById('cam-3d').className = 'text-[10px] bg-apple-orange text-black px-2 py-0.5 rounded font-semibold transition cursor-pointer';
+            document.getElementById('cam-2d').className = 'text-[10px] px-2 py-0.5 rounded text-gray-400 hover:text-white transition cursor-pointer';
+            map.easeTo({ pitch: 52, bearing: -10, duration: 900 });
+          }
+        } else if (state.cameraView === '3d') {
+          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
+        }
       }
     }
 
@@ -2670,7 +2829,13 @@
           wind_speed_kmh: state.weatherSim.windSpeed,
           relative_humidity_pct: state.weatherSim.humidity,
           temp_anomaly_c: state.weatherSim.tempAnomaly,
-          top_critical_cells: state.activeAlerts.slice(0, 5)
+          top_critical_cells: state.activeAlerts.slice(0, 5).map(a => ({
+            lat: a.lat,
+            lon: a.lon,
+            level: a.level,
+            escalation_prob_pct: a.prob,
+            spread_reach_km: a.spreadKm
+          }))
         }
       };
 
