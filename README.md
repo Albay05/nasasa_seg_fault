@@ -95,6 +95,3 @@ ALAZ gratefully acknowledges the following open science, satellite, and geospati
 
 ---
 
-## 📄 License
-
-Developed for the **NASA Space Apps Challenge**. Released under the [MIT License](LICENSE).
