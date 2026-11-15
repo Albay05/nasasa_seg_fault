@@ -9,3 +9,9 @@ Requirements of the application:
 - Which periods of the year see more fires, which years had more burning activity, and how a current fire compares with previous ones (for a selected area)
 - A region and a specific date range, then download analytics and visualizations of fire activity
 - By the end of that phase (harmonization) the sensor of origin no longer matters and the patterns, trends, and anomalies become the focus 
+
+Resources:
+- https://firms.modaps.eosdis.nasa.gov/data/download/DL_FIRE_SV-C2_845835.zip
+- https://firms.modaps.eosdis.nasa.gov/data/download/DL_FIRE_J1V-C2_845833.zip
+- https://firms.modaps.eosdis.nasa.gov/data/download/DL_FIRE_J2V-C2_845834.zip
+- https://firms.modaps.eosdis.nasa.gov/data/download/DL_FIRE_M-C61_845832.zip
