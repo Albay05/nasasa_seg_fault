@@ -69,7 +69,7 @@
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px !important;
       padding: 12px 14px !important; color: #F5F5F7 !important;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important; min-width: 250px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important; min-width: 255px;
     }
     .maplibregl-popup-tip { border-top-color: rgba(24, 24, 27, 0.95) !important; border-bottom-color: rgba(24, 24, 27, 0.95) !important; }
     .maplibregl-popup-close-button { color: #9CA3AF !important; font-size: 16px !important; right: 8px !important; top: 6px !important; }
@@ -127,6 +127,13 @@
     <button type="button" onclick="cancelAOIDraw()" data-i18n="cancel" class="text-apple-blue hover:text-white font-medium ml-2">Vazgeç</button>
   </div>
 
+  <!-- ERKEN UYARI ÜST ALARM BANNER (Tahmin katmanı aktif ve kritik risk varken görünür) -->
+  <div id="critical-alert-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-[950] ios-panel border-apple-red/50 px-4 py-2 text-xs flex items-center gap-3 pointer-events-auto">
+    <span class="w-2.5 h-2.5 rounded-full bg-apple-red animate-ping"></span>
+    <span id="critical-banner-text" class="text-white font-medium">KRİTİK YANGIN UYARISI: Yüksek yayılım riski tespit edildi.</span>
+    <button type="button" onclick="focusTopAlertZone()" data-i18n=" inspectBtn" class="text-apple-orange hover:underline font-semibold ml-1 cursor-pointer">Bölgeye Git →</button>
+  </div>
+
   <!-- SOL ÜST KOMUTA ÇUBUĞU -->
   <div class="fixed top-4 left-4 z-[1000] flex flex-col gap-2 pointer-events-auto">
     <header class="flex items-center gap-2">
@@ -160,6 +167,13 @@
         <button type="button" id="clear-aoi-btn" onclick="clearAOI()" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-medium bg-apple-red/20 text-apple-red border border-apple-red/30 hover:bg-apple-red/30 transition flex items-center gap-1 cursor-pointer">
           <span data-i18n="clearAoiShort">AOI Temizle</span>
           <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <!-- YANGIN TAHMİN & ERKEN UYARI TOGGLE -->
+        <button type="button" id="btn-alert-pop" class="top-nav-btn px-3 py-1.5 rounded-xl text-xs font-medium text-gray-200 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5 border border-transparent cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-apple-red pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <span data-i18n="navAlerts" class="pointer-events-none">Tahmin & Uyarı</span>
+          <span id="alert-count-badge" class="px-1.5 py-0.2 rounded-full bg-apple-red/25 text-apple-red border border-apple-red/40 text-[10px] font-bold pointer-events-none">0</span>
         </button>
 
         <!-- Dışa Aktar Toggle -->
@@ -258,8 +272,85 @@
     </div>
   </div>
 
+  <!-- AÇILIR/KAPANIR YANGIN TAHMİN & ERKEN UYARI PENCERESİ -->
+  <div id="alert-popover" style="left: 210px;" class="floating-dropdown w-[370px] ios-panel p-4 flex-col gap-3">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-apple-red animate-pulse"></span>
+        <span data-i18n="secAlertsTitle" class="text-[11px] font-semibold text-white uppercase tracking-wider">Yangın Tahmin & Erken Uyarı Merkezi</span>
+      </div>
+      <button type="button" onclick="closeAllPopovers()" class="text-gray-400 hover:text-white p-0.5 cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- 72 Saatlik Harita Tahmin & Yayılım Katmanı Anahtarı -->
+    <div class="flex items-center justify-between bg-apple-gray2/60 px-3 py-2 rounded-xl border border-white/10">
+      <div class="flex flex-col">
+        <span data-i18n="forecastLayerLbl" class="text-xs font-semibold text-white">72 Saatlik Risk & Yayılım Katmanı</span>
+        <span data-i18n="forecastLayerSub" class="text-[10px] text-gray-400">Haritada tehlike halkalarını ve rüzgar vektörünü göster</span>
+      </div>
+      <div id="forecast-layer-toggle" onclick="toggleForecastMapLayer()" class="ios-toggle">
+        <div class="ios-toggle-knob"></div>
+      </div>
+    </div>
+
+    <!-- Meteorolojik Simülasyon & FWI Parametreleri -->
+    <div class="flex flex-col gap-2 bg-black/35 p-3 rounded-xl border border-white/5">
+      <div class="flex items-center justify-between">
+        <span data-i18n="fwiSimTitle" class="text-[10px] font-semibold text-gray-300 uppercase tracking-wider">Meteorolojik Stres & FWI Simülasyonu</span>
+        <span id="fwi-score-badge" class="text-[10px] px-2 py-0.5 rounded bg-apple-red/20 text-apple-red border border-apple-red/40 font-bold">FWI: 48 (Yüksek)</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 mt-1">
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-[10px]">
+            <span data-i18n="windSpeedLbl" class="text-gray-400">Rüzgar Hızı:</span>
+            <span id="val-wind-speed" class="text-white font-semibold">35 km/s</span>
+          </div>
+          <input type="range" id="sim-wind-speed" min="5" max="85" value="35" oninput="updateWeatherSim()" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-[10px]">
+            <span data-i18n="humidityLbl" class="text-gray-400">Bağıl Nem:</span>
+            <span id="val-humidity" class="text-white font-semibold">%22</span>
+          </div>
+          <input type="range" id="sim-humidity" min="8" max="75" value="22" oninput="updateWeatherSim()" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-[10px]">
+            <span data-i18n="tempAnomLbl" class="text-gray-400">Sıcaklık Anom.:</span>
+            <span id="val-temp-anom" class="text-apple-orange font-semibold">+3.5 °C</span>
+          </div>
+          <input type="range" id="sim-temp-anom" min="0" max="8" step="0.5" value="3.5" oninput="updateWeatherSim()" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <span data-i18n="windDirLbl" class="text-[10px] text-gray-400">Rüzgar Yönü (Yayılım):</span>
+          <select id="sim-wind-dir" onchange="updateWeatherSim()" class="custom-select w-full">
+            <option value="SW" data-i18n="dirSW">GB (Güneybatı'ya)</option>
+            <option value="NW" data-i18n="dirNW">KB (Kuzeybatı'ya)</option>
+            <option value="NE" data-i18n="dirNE">KD (Kuzeydoğu'ya)</option>
+            <option value="SE" data-i18n="dirSE">GD (Güneydoğu'ya)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kritik Erken Uyarı Bölgeleri Listesi -->
+    <div class="flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <span data-i18n="activeWarningsTitle" class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aktif Erken Uyarı & Kritik Hücreler</span>
+        <button type="button" onclick="exportEarlyWarningCSV()" data-i18n="exportAlertCsvBtn" class="text-[10px] text-apple-green hover:underline font-medium cursor-pointer">Uyarı Bülteni (.CSV)</button>
+      </div>
+      <div id="early-warning-list" class="flex flex-col gap-1.5 max-h-[210px] overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
   <!-- AÇILIR/KAPANIR DIŞA AKTARIM PENCERESİ -->
-  <div id="export-popover" style="left: 260px;" class="floating-dropdown w-[260px] ios-panel p-3.5 flex-col gap-2">
+  <div id="export-popover" style="left: 360px;" class="floating-dropdown w-[260px] ios-panel p-3.5 flex-col gap-2">
     <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
       <span data-i18n="secExportShort" class="text-[10px] font-semibold text-gray-300 uppercase tracking-wider">Veri & Görsel İndir</span>
       <button type="button" onclick="closeAllPopovers()" class="text-gray-400 hover:text-white p-0.5 cursor-pointer">
@@ -281,7 +372,7 @@
   </div>
 
   <!-- SOL ALT KOMPAKT YÜZER KPI BARI -->
-  <div class="fixed bottom-4 left-4 z-20 ios-panel px-4 py-2.5 flex items-center gap-5 pointer-events-auto">
+  <div class="fixed bottom-4 left-4 z-20 ios-panel px-4 py-2.5 flex items-center gap-4 pointer-events-auto">
     <div class="flex flex-col">
       <div class="flex items-center gap-1.5 text-[9.5px] font-semibold text-gray-400 uppercase">
         <span class="w-1.5 h-1.5 rounded-full bg-apple-orange"></span>
@@ -302,6 +393,17 @@
       <div class="flex items-baseline gap-2 mt-0.5">
         <span id="kpi-frp" class="text-xl font-bold text-white tabular-nums">0.0</span>
         <span id="kpi-frp-sub" class="text-[10px] text-gray-400">Bölge Ort: 0.0 MW</span>
+      </div>
+    </div>
+    <div class="h-7 w-[1px] bg-white/10"></div>
+    <div class="flex flex-col cursor-pointer" onclick="window.togglePopover('alert-popover', event)">
+      <div class="flex items-center gap-1.5 text-[9.5px] font-semibold text-gray-400 uppercase">
+        <span class="w-1.5 h-1.5 rounded-full bg-apple-red animate-pulse"></span>
+        <span data-i18n="kpiRiskTitle">RİSK ENDEKSİ (FWI)</span>
+      </div>
+      <div class="flex items-baseline gap-1.5 mt-0.5">
+        <span id="kpi-risk-val" class="text-lg font-bold text-apple-red tabular-nums">YÜKSEK</span>
+        <span id="kpi-risk-sub" class="text-[10px] text-gray-400">0 Kritik Uyarı</span>
       </div>
     </div>
   </div>
@@ -360,14 +462,15 @@
       <div id="calendar-chart" class="w-full flex-1 min-h-0"></div>
     </div>
 
-    <!-- Çok Yıllı Analiz -->
+    <!-- Çok Yıllı Analiz & Gelecek Tahmini -->
     <div class="ios-panel p-3.5 flex flex-col h-[195px] shrink-0 overflow-hidden">
-      <div class="flex items-center justify-between mb-1 shrink-0">
-        <h3 data-i18n="multiYearTitle" class="text-xs font-semibold text-white">Çok Yıllı Analiz</h3>
-        <div class="segmented-control w-[240px]">
-          <div onclick="setChartMode('trend')" id="cm-trend" data-i18n="tabTrend" class="segmented-btn active">Trend & Ort.</div>
-          <div onclick="setChartMode('anomaly')" id="cm-anomaly" data-i18n="tabAnomaly" class="segmented-btn">Anomali (%)</div>
+      <div class="flex items-center justify-between mb-1 shrink-0 gap-1">
+        <h3 data-i18n="multiYearTitle" class="text-xs font-semibold text-white whitespace-nowrap">Analiz & Tahmin</h3>
+        <div class="segmented-control flex-1 max-w-[285px]">
+          <div onclick="setChartMode('trend')" id="cm-trend" data-i18n="tabTrend" class="segmented-btn active">Trend</div>
+          <div onclick="setChartMode('anomaly')" id="cm-anomaly" data-i18n="tabAnomaly" class="segmented-btn">Anomali</div>
           <div onclick="setChartMode('seasonal')" id="cm-seasonal" data-i18n="tabSeasonal" class="segmented-btn">Dönemsel</div>
+          <div onclick="setChartMode('forecast')" id="cm-forecast" data-i18n="tabForecast" class="segmented-btn text-apple-orange">Tahmin</div>
         </div>
       </div>
 
@@ -441,9 +544,11 @@
         navFilters: 'Filtreler & Katmanlar',
         drawAoiBtn: 'İlgi Alanı (AOI)',
         clearAoiShort: 'AOI Temizle',
+        navAlerts: 'Tahmin & Uyarı',
         navExport: 'Dışa Aktar',
         aoiPrompt: 'Haritada sol tık basılı tutarak dikdörtgen alan (Bounding Box) sürükleyin.',
         cancel: 'Vazgeç',
+        inspectBtn: 'Bölgeye Git →',
         secDateRange: 'Özel Tarih Aralığı Sorgusu',
         startDateLbl: 'Başlangıç:',
         endDateLbl: 'Bitiş:',
@@ -464,12 +569,27 @@
         legMid: 'Yüksek (Turuncu)',
         legHigh: 'Akkor Merkez',
         legJoint: 'Ortak',
+        secAlertsTitle: 'Yangın Tahmin & Erken Uyarı Merkezi',
+        forecastLayerLbl: '72 Saatlik Risk & Yayılım Katmanı',
+        forecastLayerSub: 'Haritada tehlike halkalarını ve rüzgar vektörünü göster',
+        fwiSimTitle: 'Meteorolojik Stres & FWI Simülasyonu',
+        windSpeedLbl: 'Rüzgar Hızı:',
+        humidityLbl: 'Bağıl Nem:',
+        tempAnomLbl: 'Sıcaklık Anom.:',
+        windDirLbl: 'Rüzgar Yönü (Yayılım):',
+        dirSW: "GB (Güneybatı'ya)",
+        dirNW: "KB (Kuzeybatı'ya)",
+        dirNE: "KD (Kuzeydoğu'ya)",
+        dirSE: "GD (Güneydoğu'ya)",
+        activeWarningsTitle: 'Aktif Erken Uyarı & Kritik Hücreler',
+        exportAlertCsvBtn: 'Uyarı Bülteni (.CSV)',
         secExportShort: 'Veri & Görsel İndir',
         btnCsvFull: 'Sıcak Noktalar (.CSV)',
         btnJsonFull: 'Bölgesel Analitik (.JSON)',
         btnPngFull: '4\'lü Grafik Posteri (.PNG)',
         kpiEventsTitle: 'RAPORLANAN OLAY',
         kpiFrpTitle: 'ORT. ENERJİ (FRP)',
+        kpiRiskTitle: 'RİSK ENDEKSİ (FWI)',
         hideAnalytics: 'Analitiği Gizle',
         showAnalytics: 'Analitiği Göster',
         harmTitle: 'Sensör Uyumlaştırma & Tarihsel Anomali',
@@ -478,10 +598,11 @@
         tauCardTitle: 'MİKRO-YANGIN EŞİĞİ (τ)',
         matrixTitle: 'Aylık & Yıllık Yanma Matrisi (2000–2026)',
         matrixSub: 'Soluk hücreler: Veri Yok • Hücreye tıklayarak filtreleyin',
-        multiYearTitle: 'Çok Yıllı Analiz',
-        tabTrend: 'Trend & Ort.',
-        tabAnomaly: 'Anomali (%)',
+        multiYearTitle: 'Analiz & Tahmin',
+        tabTrend: 'Trend',
+        tabAnomaly: 'Anomali',
         tabSeasonal: 'Dönemsel',
+        tabForecast: 'Tahmin',
         cam3d: '3B Arazi',
         cam2d: '2B Dik',
         bmDark: 'Koyu',
@@ -507,7 +628,17 @@
         legAnomNeg: 'Normalin Altında (-%)',
         legSeasPeak: 'Zirve Yangın Dönemi',
         legSeasAvg: 'Çok Yıllı Ay Ort.',
-        legSeasYear: 'Yılı Aktivitesi'
+        legSeasYear: 'Yılı Aktivitesi',
+        legFcExpected: 'Tahmini Yangın Olayı',
+        legFcBand: '%95 Risk & Güven Bandı',
+        legFcHist: 'Tarihsel Baz',
+        riskExtreme: 'KRİTİK',
+        riskHigh: 'YÜKSEK',
+        riskMod: 'ORTA',
+        alertPopupTitle: 'Erken Uyarı & 72sa Yayılım Tahmini',
+        probLbl: 'Büyüme Olasılığı',
+        spreadRadiusLbl: '72sa Yayılım Yarıçapı',
+        focusMapBtn: 'Odakla'
       },
       en: {
         months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -515,9 +646,11 @@
         navFilters: 'Filters & Layers',
         drawAoiBtn: 'Select Area (AOI)',
         clearAoiShort: 'Clear AOI',
+        navAlerts: 'Forecast & Alerts',
         navExport: 'Export',
         aoiPrompt: 'Click and drag on the map to draw an Area of Interest (Bounding Box).',
         cancel: 'Cancel',
+        inspectBtn: 'Fly to Zone →',
         secDateRange: 'Custom Date Range Query',
         startDateLbl: 'Start:',
         endDateLbl: 'End:',
@@ -538,12 +671,27 @@
         legMid: 'High (Orange)',
         legHigh: 'White Core',
         legJoint: 'Joint',
+        secAlertsTitle: 'Fire Forecast & Early Warning Center',
+        forecastLayerLbl: '72h Risk & Spread Map Layer',
+        forecastLayerSub: 'Render danger perimeters & wind vectors on map',
+        fwiSimTitle: 'Meteorological Stress & FWI Simulation',
+        windSpeedLbl: 'Wind Speed:',
+        humidityLbl: 'Rel. Humidity:',
+        tempAnomLbl: 'Temp Anomaly:',
+        windDirLbl: 'Wind Vector (Spread):',
+        dirSW: 'SW (South-West)',
+        dirNW: 'NW (North-West)',
+        dirNE: 'NE (North-East)',
+        dirSE: 'SE (South-East)',
+        activeWarningsTitle: 'Active Early Warnings & Critical Cells',
+        exportAlertCsvBtn: 'Alert Bulletin (.CSV)',
         secExportShort: 'Export Data & Charts',
         btnCsvFull: 'Hotspots Data (.CSV)',
         btnJsonFull: 'Regional Analytics (.JSON)',
         btnPngFull: '4-Chart Poster (.PNG)',
         kpiEventsTitle: 'REPORTED EVENTS',
         kpiFrpTitle: 'MEAN ENERGY (FRP)',
+        kpiRiskTitle: 'DANGER INDEX (FWI)',
         hideAnalytics: 'Hide Analytics',
         showAnalytics: 'Show Analytics',
         harmTitle: 'Sensor Harmonization & Historical Anomaly',
@@ -552,10 +700,11 @@
         tauCardTitle: 'MICRO-FIRE THRESHOLD (τ)',
         matrixTitle: 'Monthly & Yearly Burning Matrix (2000–2026)',
         matrixSub: 'Faded cells: No Data • Click any cell to filter',
-        multiYearTitle: 'Multi-Year Analytics',
-        tabTrend: 'Trend & Avg',
-        tabAnomaly: 'Anomaly (%)',
+        multiYearTitle: 'Analytics & Forecast',
+        tabTrend: 'Trend',
+        tabAnomaly: 'Anomaly',
         tabSeasonal: 'Seasonal',
+        tabForecast: 'Forecast',
         cam3d: '3D Terrain',
         cam2d: '2D Top',
         bmDark: 'Dark',
@@ -581,7 +730,17 @@
         legAnomNeg: 'Below Average (-%)',
         legSeasPeak: 'Peak Fire Season',
         legSeasAvg: 'Multi-Year Monthly Avg',
-        legSeasYear: 'Activity'
+        legSeasYear: 'Activity',
+        legFcExpected: 'Predicted Fire Events',
+        legFcBand: '95% Risk & Confidence Band',
+        legFcHist: 'Historical Baseline',
+        riskExtreme: 'EXTREME',
+        riskHigh: 'HIGH',
+        riskMod: 'MODERATE',
+        alertPopupTitle: 'Early Warning & 72h Spread Forecast',
+        probLbl: 'Escalation Prob.',
+        spreadRadiusLbl: '72h Spread Radius',
+        focusMapBtn: 'Focus'
       }
     };
 
@@ -591,7 +750,7 @@
       harmonized: true,
       mapMode: 'h3',
       chartMode: 'trend',
-      cameraView: '2d', // Varsayılan olarak 2B Dik görünüm
+      cameraView: '2d',
       selectedYear: 2026,
       selectedMonth: 0,
       customDateStart: null,
@@ -600,6 +759,15 @@
       dnFilter: 'all',
       minFrp: 0,
       showBurnedArea: false,
+      showForecastLayer: false,
+      weatherSim: {
+        windSpeed: 35,
+        humidity: 22,
+        tempAnomaly: 3.5,
+        windDir: 'SW',
+        fwiScore: 48
+      },
+      activeAlerts: [],
       aoiBounds: null,
       playing: false,
       playTimer: null,
@@ -682,6 +850,7 @@
       }
       const mapping = {
         'filter-popover': 'btn-filter-pop',
+        'alert-popover': 'btn-alert-pop',
         'export-popover': 'btn-export-pop'
       };
       Object.keys(mapping).forEach(pId => {
@@ -708,7 +877,7 @@
     };
 
     window.closeAllPopovers = function() {
-      ['filter-popover', 'export-popover'].forEach(pId => {
+      ['filter-popover', 'alert-popover', 'export-popover'].forEach(pId => {
         const el = document.getElementById(pId);
         if (el) {
           el.classList.remove('is-open');
@@ -718,7 +887,7 @@
           el.style.pointerEvents = 'none';
         }
       });
-      ['btn-filter-pop', 'btn-export-pop'].forEach(bId => {
+      ['btn-filter-pop', 'btn-alert-pop', 'btn-export-pop'].forEach(bId => {
         const btn = document.getElementById(bId);
         if (btn) btn.classList.remove('active-tab');
       });
@@ -1071,7 +1240,7 @@
     }
 
     // ---------------------------------------------------------
-    // 4. HARİTA (VARSAYILAN 2B GÖRÜNÜM), AOI BOUNDING BOX VE POPUP
+    // 4. HARİTA (VARSAYILAN 2B GÖRÜNÜM), AOI, TAHMİN VE POPUP
     // ---------------------------------------------------------
     function initMap() {
       map = new maplibregl.Map({
@@ -1079,8 +1248,8 @@
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
         center: [35.0, 38.6],
         zoom: 5.8,
-        pitch: 0,     // Varsayılan 2B Dik Açı
-        bearing: 0,   // Varsayılan Kuzey Yönü
+        pitch: 0,
+        bearing: 0,
         maxPitch: 82,
         boxZoom: false,
         attributionControl: false
@@ -1097,7 +1266,6 @@
           maxzoom: 13
         });
 
-        // Başlangıç görünümü 2B olduğu için terrain kapalı başlar (3B'ye geçildiğinde açılır)
         if (state.cameraView === '3d') {
           map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
         }
@@ -1132,6 +1300,8 @@
         map.addSource('extrusion-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('aoi-source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addSource('burned-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addSource('forecast-zones-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addSource('forecast-vectors-data', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
         map.addLayer({
           id: 'layer-burned',
@@ -1202,6 +1372,41 @@
             'circle-opacity': 0.95,
             'circle-stroke-width': 0.8,
             'circle-stroke-color': '#000000'
+          }
+        });
+
+        // 72 Saatlik Yangın Risk Halkaları Katmanı
+        map.addLayer({
+          id: 'layer-forecast-zones',
+          type: 'circle',
+          source: 'forecast-zones-data',
+          layout: { visibility: 'none' },
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['*', ['get', 'spreadKm'], 1.4], 9, ['*', ['get', 'spreadKm'], 5.2]],
+            'circle-color': [
+              'case',
+              ['==', ['get', 'level'], 'EXTREME'], 'rgba(255, 59, 48, 0.24)',
+              'rgba(255, 149, 0, 0.20)'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': [
+              'case',
+              ['==', ['get', 'level'], 'EXTREME'], '#FF3B30',
+              '#FF9500'
+            ]
+          }
+        });
+
+        // Rüzgar Yönlü Tahmini Yayılım Vektörleri Katmanı
+        map.addLayer({
+          id: 'layer-forecast-vectors',
+          type: 'line',
+          source: 'forecast-vectors-data',
+          layout: { visibility: 'none', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#FFE600',
+            'line-width': 2.2,
+            'line-dasharray': [2, 2]
           }
         });
 
@@ -1408,8 +1613,239 @@
     }
 
     // ---------------------------------------------------------
-    // 5. HARİTA ÇİZİM MOTORU
+    // 5. YANGIN TAHMİN, FWI SİMÜLASYONU VE HARİTA ÇİZİM MOTORU
     // ---------------------------------------------------------
+    function computeFwiScore() {
+      const w = state.weatherSim.windSpeed;
+      const h = state.weatherSim.humidity;
+      const tAnom = state.weatherSim.tempAnomaly;
+      const rawScore = (w * 0.72) + ((100 - h) * 0.48) + (tAnom * 6.2);
+      return Math.min(99, Math.max(8, Math.round(rawScore)));
+    }
+
+    function updateWeatherSim() {
+      state.weatherSim.windSpeed = parseFloat(document.getElementById('sim-wind-speed').value);
+      state.weatherSim.humidity = parseFloat(document.getElementById('sim-humidity').value);
+      state.weatherSim.tempAnomaly = parseFloat(document.getElementById('sim-temp-anom').value);
+      state.weatherSim.windDir = document.getElementById('sim-wind-dir').value;
+      state.weatherSim.fwiScore = computeFwiScore();
+
+      const isTr = state.lang === 'tr';
+      document.getElementById('val-wind-speed').textContent = `${state.weatherSim.windSpeed} ${isTr ? 'km/s' : 'km/h'}`;
+      document.getElementById('val-humidity').textContent = `%${state.weatherSim.humidity}`;
+      document.getElementById('val-temp-anom').textContent = `+${state.weatherSim.tempAnomaly.toFixed(1)} °C`;
+
+      const sourceData = getActiveSourceHotspots();
+      const filtered = sourceData.filter(h => passesHotspotFilter(h));
+      computeAndRenderEarlyWarnings(filtered);
+
+      if (state.chartMode === 'forecast' && state.cachedChartData && timeseriesChart) {
+        timeseriesChart.setOption(buildChartOptionForMode('forecast', state.cachedChartData), true);
+      }
+    }
+
+    function toggleForecastMapLayer() {
+      state.showForecastLayer = !state.showForecastLayer;
+      document.getElementById('forecast-layer-toggle').classList.toggle('active', state.showForecastLayer);
+      if (isMapLoaded) {
+        const vis = state.showForecastLayer ? 'visible' : 'none';
+        map.setLayoutProperty('layer-forecast-zones', 'visibility', vis);
+        map.setLayoutProperty('layer-forecast-vectors', 'visibility', vis);
+      }
+      updateCriticalBannerVisibility();
+    }
+
+    function updateCriticalBannerVisibility() {
+      const banner = document.getElementById('critical-alert-banner');
+      if (!banner) return;
+      const extremeCount = state.activeAlerts.filter(a => a.level === 'EXTREME').length;
+      if (state.showForecastLayer && extremeCount > 0) {
+        const isTr = state.lang === 'tr';
+        document.getElementById('critical-banner-text').textContent = isTr
+          ? `ERKEN UYARI: ${extremeCount} kritik hücrede yüksek rüzgar kaynaklı yayılım riski tespit edildi (FWI: ${state.weatherSim.fwiScore}).`
+          : `EARLY WARNING: High wind-driven spread risk detected in ${extremeCount} critical cells (FWI: ${state.weatherSim.fwiScore}).`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function computeAndRenderEarlyWarnings(filteredHotspots) {
+      const fwi = computeFwiScore();
+      state.weatherSim.fwiScore = fwi;
+
+      // 0.25 derecelik ızgara hücrelerinde aktif ve tarihsel kümelenme
+      const cellMap = {};
+      filteredHotspots.forEach(h => {
+        const cLat = +(Math.round(h.lat * 4) / 4).toFixed(2);
+        const cLon = +(Math.round(h.lon * 4) / 4).toFixed(2);
+        const key = `${cLat}_${cLon}`;
+        if (!cellMap[key]) {
+          cellMap[key] = { lat: cLat, lon: cLon, count: 0, maxFrp: 0, sumFrp: 0, lastDate: h.date, sensor: h.sensor };
+        }
+        const frp = state.harmonized ? h.frp_harm : h.frp_raw;
+        cellMap[key].count += 1;
+        cellMap[key].sumFrp += frp;
+        if (frp > cellMap[key].maxFrp) cellMap[key].maxFrp = frp;
+        if (h.date > cellMap[key].lastDate) cellMap[key].lastDate = h.date;
+      });
+
+      const dirOffsets = {
+        SW: { dLon: -0.14, dLat: -0.11 },
+        NW: { dLon: -0.14, dLat: 0.11 },
+        NE: { dLon: 0.14, dLat: 0.11 },
+        SE: { dLon: 0.14, dLat: -0.11 }
+      };
+      const vec = dirOffsets[state.weatherSim.windDir] || dirOffsets.SW;
+      const windFactor = state.weatherSim.windSpeed / 35.0;
+
+      const alerts = Object.values(cellMap).map(c => {
+        const intensityScore = Math.min(45, (c.maxFrp * 0.22) + (c.count * 2.4));
+        const prob = Math.min(98, Math.max(25, Math.round(intensityScore + (fwi * 0.56))));
+        const spreadKm = +(Math.max(2.5, (c.maxFrp * 0.04 + 3.2) * windFactor * (fwi / 45.0))).toFixed(1);
+        const level = prob >= 78 ? 'EXTREME' : (prob >= 58 ? 'HIGH' : 'MODERATE');
+        return {
+          ...c,
+          prob,
+          spreadKm,
+          level,
+          endLon: +(c.lon + vec.dLon * windFactor).toFixed(4),
+          endLat: +(c.lat + vec.dLat * windFactor).toFixed(4)
+        };
+      }).sort((a, b) => b.prob - a.prob).slice(0, 12);
+
+      state.activeAlerts = alerts;
+
+      const criticalCount = alerts.filter(a => a.level === 'EXTREME' || a.level === 'HIGH').length;
+      document.getElementById('alert-count-badge').textContent = criticalCount;
+
+      const fwiBadge = document.getElementById('fwi-score-badge');
+      const kpiRiskVal = document.getElementById('kpi-risk-val');
+      const kpiRiskSub = document.getElementById('kpi-risk-sub');
+      const isTr = state.lang === 'tr';
+
+      let riskLabel = t('riskMod');
+      let badgeCls = 'text-[10px] px-2 py-0.5 rounded bg-apple-orange/20 text-apple-orange border border-apple-orange/40 font-bold';
+      if (fwi >= 65) {
+        riskLabel = t('riskExtreme');
+        badgeCls = 'text-[10px] px-2 py-0.5 rounded bg-apple-red/25 text-apple-red border border-apple-red/40 font-bold';
+        kpiRiskVal.className = 'text-lg font-bold text-apple-red tabular-nums';
+      } else if (fwi >= 42) {
+        riskLabel = t('riskHigh');
+        kpiRiskVal.className = 'text-lg font-bold text-apple-orange tabular-nums';
+      } else {
+        kpiRiskVal.className = 'text-lg font-bold text-apple-green tabular-nums';
+      }
+
+      fwiBadge.className = badgeCls;
+      fwiBadge.textContent = `FWI: ${fwi} (${riskLabel})`;
+      kpiRiskVal.textContent = `${riskLabel} (${fwi})`;
+      kpiRiskSub.textContent = isTr ? `${criticalCount} Aktif Uyarı` : `${criticalCount} Active Alerts`;
+
+      // Erken Uyarı Listesini Renderla
+      const listEl = document.getElementById('early-warning-list');
+      if (listEl) {
+        if (alerts.length === 0) {
+          listEl.innerHTML = `<div class="text-[11px] text-gray-400 py-3 text-center">${isTr ? 'Seçili filtrede aktif risk hücresi bulunamadı.' : 'No active risk cells in current filter.'}</div>`;
+        } else {
+          listEl.innerHTML = alerts.map((a, idx) => {
+            const lvlBadge = a.level === 'EXTREME'
+              ? `<span class="px-1.5 py-0.5 rounded bg-apple-red/25 text-apple-red border border-apple-red/40 text-[9px] font-bold">${t('riskExtreme')}</span>`
+              : `<span class="px-1.5 py-0.5 rounded bg-apple-orange/20 text-apple-orange border border-apple-orange/40 text-[9px] font-bold">${t('riskHigh')}</span>`;
+            return `
+              <div onclick="focusAlertOnMap(${idx})" class="bg-apple-gray2/70 hover:bg-apple-gray3/90 p-2 rounded-lg border border-white/5 transition flex items-center justify-between cursor-pointer">
+                <div class="flex flex-col gap-0.5">
+                  <div class="flex items-center gap-1.5">
+                    ${lvlBadge}
+                    <span class="text-[11px] font-mono font-semibold text-white">${a.lat.toFixed(2)}°N, ${a.lon.toFixed(2)}°E</span>
+                  </div>
+                  <span class="text-[10px] text-gray-400">${t('probLbl')}: <b class="text-white">%${a.prob}</b> • ${t('spreadRadiusLbl')}: <b class="text-apple-orange">${a.spreadKm} km</b></span>
+                </div>
+                <span class="text-[10px] text-apple-blue font-semibold hover:underline">${t('focusMapBtn')} →</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // Harita Katmanlarını Güncelle
+      if (isMapLoaded && map.getSource('forecast-zones-data')) {
+        const zoneFeatures = alerts.map(a => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
+          properties: { spreadKm: a.spreadKm, level: a.level, prob: a.prob }
+        }));
+        const vectorFeatures = alerts.map(a => ({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[a.lon, a.lat], [a.endLon, a.endLat]]
+          },
+          properties: { level: a.level }
+        }));
+        map.getSource('forecast-zones-data').setData({ type: 'FeatureCollection', features: zoneFeatures });
+        map.getSource('forecast-vectors-data').setData({ type: 'FeatureCollection', features: vectorFeatures });
+      }
+
+      updateCriticalBannerVisibility();
+    }
+
+    window.focusAlertOnMap = function(idx) {
+      const alertItem = state.activeAlerts[idx];
+      if (!alertItem || !isMapLoaded) return;
+
+      if (!state.showForecastLayer) {
+        toggleForecastMapLayer();
+      }
+      closeAllPopovers();
+
+      map.flyTo({ center: [alertItem.lon, alertItem.lat], zoom: 8.2, duration: 1100 });
+
+      const isTr = state.lang === 'tr';
+      const html = `
+        <div class="flex flex-col gap-2 text-xs">
+          <div class="flex items-center justify-between border-b border-white/10 pb-1.5 pr-4">
+            <span class="font-semibold text-apple-red flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-apple-red animate-ping inline-block"></span>
+              ${t('alertPopupTitle')}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-y-1.5 text-[11px]">
+            <span class="text-gray-400">${isTr ? 'Merkez Koordinat:' : 'Center Coords:'}</span>
+            <span class="text-right font-mono text-white">${alertItem.lat.toFixed(3)}°N, ${alertItem.lon.toFixed(3)}°E</span>
+            <span class="text-gray-400">${t('probLbl')}:</span>
+            <span class="text-right font-bold text-apple-red">%${alertItem.prob} (${alertItem.level === 'EXTREME' ? t('riskExtreme') : t('riskHigh')})</span>
+            <span class="text-gray-400">${t('spreadRadiusLbl')}:</span>
+            <span class="text-right font-semibold text-apple-orange">${alertItem.spreadKm} km (${state.weatherSim.windDir})</span>
+            <span class="text-gray-400">${isTr ? 'Küme Макс. FRP:' : 'Cluster Max FRP:'}</span>
+            <span class="text-right text-gray-200">${alertItem.maxFrp.toFixed(1)} MW (${alertItem.count} ${isTr ? 'Olay' : 'Events'})</span>
+            <span class="text-gray-400">FWI / ${isTr ? 'Rüzgar:' : 'Wind:'}</span>
+            <span class="text-right text-gray-300">FWI ${state.weatherSim.fwiScore} (${state.weatherSim.windSpeed} km/h)</span>
+          </div>
+        </div>
+      `;
+
+      if (activePopup) activePopup.remove();
+      activePopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '310px' })
+        .setLngLat([alertItem.lon, alertItem.lat])
+        .setHTML(html)
+        .addTo(map);
+    };
+
+    window.focusTopAlertZone = function() {
+      if (state.activeAlerts.length > 0) window.focusAlertOnMap(0);
+    };
+
+    function exportEarlyWarningCSV() {
+      if (!state.activeAlerts || state.activeAlerts.length === 0) return;
+      const lines = ['rank,risk_level,center_lat,center_lon,escalation_prob_pct,predicted_72h_spread_km,wind_vector_dir,fwi_index,cluster_events,max_frp_mw,last_observed_date'];
+      state.activeAlerts.forEach((a, i) => {
+        lines.push(`${i + 1},${a.level},${a.lat},${a.lon},${a.prob},${a.spreadKm},${state.weatherSim.windDir},${state.weatherSim.fwiScore},${a.count},${a.maxFrp.toFixed(1)},${a.lastDate}`);
+      });
+      const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      triggerDownloadLink(blob, `alaz_early_warning_bulletin_${state.selectedYear}.csv`);
+    }
+
     function buildExtrusionGeoJSON(filtered) {
       const step = 0.08; 
       const r = 0.032;
@@ -1482,6 +1918,8 @@
         map.getSource('burned-data').setData({ type: 'FeatureCollection', features: burnedFeatures });
       }
 
+      computeAndRenderEarlyWarnings(filtered);
+
       const mNames = getMonths();
       if (state.customDateStart && state.customDateEnd) {
         document.getElementById('timeline-label').textContent = `${state.customDateStart}  →  ${state.customDateEnd}`;
@@ -1522,7 +1960,7 @@
     }
 
     // ---------------------------------------------------------
-    // 6. SAĞ PANEL ANALİTİK, ANOMALİ VE GRAFİK MOTORU
+    // 6. SAĞ PANEL ANALİTİK, ANOMALİ VE TAHMİN GRAFİK MOTORU
     // ---------------------------------------------------------
     let calendarChart, timeseriesChart;
     let chartResizeObserver = null;
@@ -1692,7 +2130,6 @@
         }
       });
 
-      // Matris Grafiği: containLabel: true ve alt/üst boşluklarla taşma tamamen engellendi
       calendarChart.setOption({
         tooltip: {
           position: 'top', backgroundColor: 'rgba(24, 24, 27, 0.95)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 },
@@ -1771,11 +2208,17 @@
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#FF3B30] inline-block"></span> ${t('legAnomPos')}</span>
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#0A84FF] inline-block"></span> ${t('legAnomNeg')}</span>
         `;
-      } else {
+      } else if (state.chartMode === 'seasonal') {
         bar.innerHTML = `
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#FF3B30]/80 inline-block"></span> ${t('legSeasPeak')}</span>
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-white/30 inline-block"></span> ${t('legSeasAvg')}</span>
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-1 rounded bg-[#FF9500] inline-block"></span> ${state.selectedYear} ${t('legSeasYear')}</span>
+        `;
+      } else {
+        bar.innerHTML = `
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-1 rounded bg-[#FF3B30] inline-block"></span> ${t('legFcExpected')} (FWI ${state.weatherSim.fwiScore})</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[#FF9500]/30 border border-[#FF9500] inline-block"></span> ${t('legFcBand')}</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 border-b-2 border-dashed border-gray-400 inline-block"></span> ${t('legFcHist')}</span>
         `;
       }
     }
@@ -1863,7 +2306,7 @@
           yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#A1A1AA', fontSize: 9.5, formatter: (v) => `${v > 0 ? '+' : ''}${v}%` } },
           series: [{ name: t('tabAnomaly'), type: 'bar', data: anomalySeries }]
         };
-      } else {
+      } else if (mode === 'seasonal') {
         const multiYearMonthlyAvg = mNames.map((_, idx) => {
           const val = monthObservedYearCounts[idx] > 0 ? Math.round(monthTotalsAllYears[idx] / monthObservedYearCounts[idx]) : 0;
           const isPeak = state.regionStats.peakMonths.includes(idx + 1);
@@ -1892,6 +2335,55 @@
             { name: `${state.selectedYear} ${t('legSeasYear')}`, type: 'line', data: selectedYearMonthly, smooth: true, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#FF9500', width: 2.5 }, itemStyle: { color: '#FF9500' } }
           ]
         };
+      } else {
+        // 12 Aylık Yangın Risk Tahmini & %95 Güven Aralığı Projeksiyonu
+        const fwiMultiplier = 0.75 + (state.weatherSim.fwiScore / 95.0);
+        const histBaseline = mNames.map((_, idx) =>
+          monthObservedYearCounts[idx] > 0 ? Math.round(monthTotalsAllYears[idx] / monthObservedYearCounts[idx]) : 0
+        );
+        const predicted = histBaseline.map((v, idx) => {
+          const isSummer = state.regionStats.peakMonths.includes(idx + 1);
+          const seasonBoost = isSummer ? fwiMultiplier * 1.15 : fwiMultiplier;
+          return Math.round(v * seasonBoost);
+        });
+        const upperBand = predicted.map(v => Math.round(v * 1.28 + 8));
+
+        return {
+          animation: false,
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(24, 24, 27, 0.95)', borderColor: 'rgba(255,255,255,0.12)', textStyle: { color: '#fff', fontSize: 11 } },
+          grid: { top: 8, bottom: 4, left: 4, right: 10, containLabel: true },
+          xAxis: { type: 'category', data: mNames, axisLabel: { color: '#A1A1AA', fontSize: 9.5, interval: 0 } },
+          yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }, axisLabel: { color: '#A1A1AA', fontSize: 9.5 } },
+          series: [
+            {
+              name: t('legFcBand'),
+              type: 'line',
+              data: upperBand,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { width: 1, type: 'dotted', color: '#FF9500' },
+              areaStyle: { color: 'rgba(255, 149, 0, 0.18)' }
+            },
+            {
+              name: t('legFcExpected'),
+              type: 'line',
+              data: predicted,
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 5,
+              lineStyle: { color: '#FF3B30', width: 2.6 },
+              itemStyle: { color: '#FF3B30' }
+            },
+            {
+              name: t('legFcHist'),
+              type: 'line',
+              data: histBaseline,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { color: '#9CA3AF', width: 1.5, type: 'dashed' }
+            }
+          ]
+        };
       }
     }
 
@@ -1900,8 +2392,9 @@
     // ---------------------------------------------------------
     function setChartMode(mode) {
       state.chartMode = mode;
-      ['trend', 'anomaly', 'seasonal'].forEach(m => {
-        document.getElementById('cm-' + m).classList.toggle('active', m === mode);
+      ['trend', 'anomaly', 'seasonal', 'forecast'].forEach(m => {
+        const el = document.getElementById('cm-' + m);
+        if (el) el.classList.toggle('active', m === mode);
       });
       updateChartLegendBar();
       if (state.cachedChartData && timeseriesChart) {
@@ -2132,7 +2625,7 @@
       triggerDownloadLink(blob, `alaz_hotspots_${suffix}.csv`);
     }
 
-    // 2. Bölgesel Analitik ve Anomali Raporu İndirme (JSON)
+    // 2. Bölgesel Analitik, Anomali ve Erken Uyarı Raporu İndirme (JSON)
     async function exportAnalyticsReport() {
       await ensureYearLoaded(state.selectedYear);
       const sourceData = getActiveSourceHotspots();
@@ -2161,6 +2654,13 @@
           regional_historical_avg_frp_mw: +state.regionStats.avgFrp.toFixed(2),
           peak_fire_season: state.regionStats.peakSeason,
           most_active_historical_year: state.regionStats.peakYear
+        },
+        early_warning_forecast: {
+          simulated_fwi_score: state.weatherSim.fwiScore,
+          wind_speed_kmh: state.weatherSim.windSpeed,
+          relative_humidity_pct: state.weatherSim.humidity,
+          temp_anomaly_c: state.weatherSim.tempAnomaly,
+          top_critical_cells: state.activeAlerts.slice(0, 5)
         }
       };
 
@@ -2185,13 +2685,13 @@
       offChart.setOption(buildChartOptionForMode('anomaly', state.cachedChartData), true);
       const urlAnomaly = offChart.getDataURL({ pixelRatio: 2, backgroundColor: '#18181B' });
 
-      offChart.setOption(buildChartOptionForMode('seasonal', state.cachedChartData), true);
-      const urlSeasonal = offChart.getDataURL({ pixelRatio: 2, backgroundColor: '#18181B' });
+      offChart.setOption(buildChartOptionForMode('forecast', state.cachedChartData), true);
+      const urlForecast = offChart.getDataURL({ pixelRatio: 2, backgroundColor: '#18181B' });
 
       offChart.dispose();
       document.body.removeChild(offDiv);
 
-      const urls = [urlMatrix, urlTrend, urlAnomaly, urlSeasonal];
+      const urls = [urlMatrix, urlTrend, urlAnomaly, urlForecast];
       const imgs = [];
       let loaded = 0;
 
@@ -2219,15 +2719,15 @@
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 24px Inter, sans-serif';
       ctx.fillText(isTr
-        ? `ALAZ // MODIS & VIIRS Uyumlaştırılmış Yangın Analitiği Raporu (${state.selectedYear})`
-        : `ALAZ // MODIS & VIIRS Harmonized Fire Analytics Report (${state.selectedYear})`, 40, 46);
+        ? `ALAZ // MODIS & VIIRS Yangın Analitiği ve Tahmin Raporu (${state.selectedYear})`
+        : `ALAZ // MODIS & VIIRS Fire Analytics & Forecast Report (${state.selectedYear})`, 40, 46);
 
       ctx.fillStyle = '#FF9500';
       ctx.font = '600 15px Inter, sans-serif';
       ctx.fillText(
         `${isTr ? 'Anomali' : 'Anomaly'}: ${state.regionStats.anomalyPct >= 0 ? '+' : ''}%${state.regionStats.anomalyPct}   |   ` +
+        `FWI: ${state.weatherSim.fwiScore}   |   ` +
         `${isTr ? 'Zirve Dönem' : 'Peak Season'}: ${state.regionStats.peakSeason}   |   ` +
-        `${t('recordYear')}: ${state.regionStats.peakYear}   |   ` +
         `R² = ${calReportData?.overlap_r2_score || '0.9057'}`,
         40, 76
       );
@@ -2250,8 +2750,8 @@
         },
         {
           x: 820, y: 575, w: 740, h: 440, img: imgs[3],
-          title: isTr ? `4. Dönemsel (Mevsimsel) Yanma Deseni ve ${state.selectedYear} Karşılaştırması` : `4. Seasonal Burning Pattern & ${state.selectedYear} Comparison`,
-          legend: isTr ? `Kırmızı Sütun: Zirve Yangın Dönemi  |  Gri Sütun: Çok Yıllı Ay Ort.  |  Turuncu Çizgi: ${state.selectedYear}` : `Red Bar: Peak Fire Season  |  Grey Bar: Multi-Year Monthly Avg  |  Orange Line: ${state.selectedYear}`
+          title: isTr ? `4. Gelecek 12 Ay Yangın Risk Tahmini (FWI: ${state.weatherSim.fwiScore})` : `4. 12-Month Fire Risk Forecast (FWI: ${state.weatherSim.fwiScore})`,
+          legend: isTr ? `Kırmızı Çizgi: Tahmini Yangın Olayı  |  Turuncu Alan: %95 Güven Bandı  |  Gri Kesikli: Tarihsel Baz` : `Red Line: Predicted Fire Events  |  Orange Band: 95% Confidence Interval  |  Grey Dashed: Historical Baseline`
         }
       ];
 
@@ -2278,18 +2778,26 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       const btnFilter = document.getElementById('btn-filter-pop');
+      const btnAlert = document.getElementById('btn-alert-pop');
       const btnExport = document.getElementById('btn-export-pop');
       const filterPop = document.getElementById('filter-popover');
+      const alertPop = document.getElementById('alert-popover');
       const exportPop = document.getElementById('export-popover');
 
       if (btnFilter) {
         btnFilter.addEventListener('click', (e) => window.togglePopover('filter-popover', e));
+      }
+      if (btnAlert) {
+        btnAlert.addEventListener('click', (e) => window.togglePopover('alert-popover', e));
       }
       if (btnExport) {
         btnExport.addEventListener('click', (e) => window.togglePopover('export-popover', e));
       }
       if (filterPop) {
         filterPop.addEventListener('click', (e) => e.stopPropagation());
+      }
+      if (alertPop) {
+        alertPop.addEventListener('click', (e) => e.stopPropagation());
       }
       if (exportPop) {
         exportPop.addEventListener('click', (e) => e.stopPropagation());
