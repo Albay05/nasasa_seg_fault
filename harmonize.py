@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+from collections import deque
 import numpy as np
 import pandas as pd
 
@@ -8,7 +9,7 @@ import pandas as pd
 # 1. SABİTLER VE COĞRAFİ IZGARA PARAMETRELERİ (1 km x 1 km Eşit Alanlı Grid)
 # ==============================================================================
 TARGET_COLS = {
-    "latitude", "longitude", "acq_date", "satellite",
+    "latitude", "longitude", "acq_date", "acq_time", "satellite",
     "instrument", "confidence", "frp", "type", "daynight"
 }
 
@@ -19,6 +20,12 @@ KM_PER_DEG_LON = 111.32 * np.cos(np.radians(REF_LAT_DEG))  # ~86.51 km
 # Gerçek 1 km x 1 km hücre adımları (derece cinsinden)
 CELL_STEP_LAT = 1.0 / KM_PER_DEG_LAT   # ~0.008983°
 CELL_STEP_LON = 1.0 / KM_PER_DEG_LON   # ~0.011559°
+
+# Aynı yangına ait yakın tespitleri tek olayda birleştirme (kümeleme) eşikleri
+SPATIAL_STRICT_KM = 1.5       # Aynı gün saat farkına bakılmaksızın birleştirilecek mesafe (km)
+SPATIAL_MERGE_KM = 2.5        # Zaman yakınlığıyla birlikte komşu cephe birleştirme mesafesi (km)
+TEMPORAL_WINDOW_MIN = 360     # 1.5 - 2.5 km arası tespitler için maksimum zaman farkı (6 saat)
+MAX_EVENT_RADIUS_KM = 5.0     # Çekirdekten maksimum olay yarıçapı (zincirleme birleşmeyi önler)
 
 # Web takvimi (Burning Calendar) için ~25 km x 25 km bölgesel gruplama adımı
 REGION_STEP_LAT = 25.0 / KM_PER_DEG_LAT
@@ -46,6 +53,15 @@ def parse_file_metadata(filepath: str) -> dict:
     return {"tier": tier, "sensor": sensor, "source_id": source_id}
 
 
+def parse_acq_time_to_minutes(series: pd.Series) -> pd.Series:
+    """FIRMS HHMM formatındaki saat bilgisini gün içi dakikaya (0-1439) çevirir."""
+    numeric_time = pd.to_numeric(series, errors="coerce")
+    hours = (numeric_time // 100).clip(0, 23)
+    minutes = (numeric_time % 100).clip(0, 59)
+    total_mins = (hours * 60 + minutes).fillna(720.0)  # Eksikse öğle (12:00) varsay
+    return total_mins.astype(np.float64)
+
+
 def load_and_clean_raw_data() -> tuple[pd.DataFrame, dict]:
     """Ham CSV'leri okur, güvenilirlik filtresi ve çift aşamalı statik ısı maskesi uygular."""
     csv_files = sorted(glob.glob("DL_FIRE_*/fire_*.csv"))
@@ -71,6 +87,11 @@ def load_and_clean_raw_data() -> tuple[pd.DataFrame, dict]:
 
         df["frp"] = pd.to_numeric(df["frp"], errors="coerce").fillna(0.0)
         df = df[df["frp"] > 0].copy()
+
+        if "acq_time" in df.columns:
+            df["acq_minutes"] = parse_acq_time_to_minutes(df["acq_time"])
+        else:
+            df["acq_minutes"] = 720.0
 
         # Eksik sütun güvenliği (type == 0: gerçek vejetasyon yangını, 1/2/3: volkan, sanayi, deniz)
         if "type" not in df.columns:
@@ -110,8 +131,6 @@ def load_and_clean_raw_data() -> tuple[pd.DataFrame, dict]:
     known_static_coords = set(zip(static_arch["latitude"].round(2), static_arch["longitude"].round(2)))
 
     # AŞAMA 2: Zamansal Kalıcılık (Temporal Persistence) Maskesi
-    # Aynı ~1x1 km koordinatta 6'dan fazla farklı ayda veya 15'ten fazla farklı günde
-    # yanma varsa burası orman değil, sürekli aktif bir fabrika/rafineri bacasıdır.
     clean_df["grid_lat"] = clean_df["latitude"].round(2)
     clean_df["grid_lon"] = clean_df["longitude"].round(2)
     clean_df["ym"] = clean_df["acq_date"].dt.year * 100 + clean_df["acq_date"].dt.month
@@ -123,7 +142,7 @@ def load_and_clean_raw_data() -> tuple[pd.DataFrame, dict]:
             active_months=("ym", "nunique")
         )
     )
-    persistent_ flares = persistence[
+    persistent_flares = persistence[
         (persistence["active_days"] >= 15) | (persistence["active_months"] >= 6)
     ]
     flare_coords = set(zip(persistent_flares["grid_lat"], persistent_flares["grid_lon"]))
@@ -142,13 +161,14 @@ def load_and_clean_raw_data() -> tuple[pd.DataFrame, dict]:
         "masked_industrial_zones": int(len(all_static_coords))
     }
 
-    return clean_df.drop(columns=["confidence", "type", "grid_lat", "grid_lon", "ym"]), filter_stats
+    drop_cols = [c for c in ["confidence", "type", "acq_time", "grid_lat", "grid_lon", "ym"] if c in clean_df.columns]
+    return clean_df.drop(columns=drop_cols), filter_stats
 
 
 def compute_thermal_centroids(df: pd.DataFrame) -> pd.DataFrame:
     """
     ADIM 1 & 2: Enlem düzeltmeli 1x1 km ızgara içinde FRP ağırlıklı
-    termal kütle merkezini (centroid) ve hücre toplam enerjisini hesaplar.
+    termal kütle merkezini (centroid), ortalama geçiş zamanını ve hücre toplam enerjisini hesaplar.
     """
     print("[2/4] 1x1 km hücrelerde FRP ağırlıklı termal kütle merkezleri hesaplanıyor...")
 
@@ -157,6 +177,7 @@ def compute_thermal_centroids(df: pd.DataFrame) -> pd.DataFrame:
 
     df["lat_x_frp"] = df["latitude"] * df["frp"]
     df["lon_x_frp"] = df["longitude"] * df["frp"]
+    df["time_x_frp"] = df["acq_minutes"] * df["frp"]
 
     # Aynı uydu geçişinde aynı 1x1 km kareye düşen pikselleri birleştir (Enerji Korunumu)
     pass_cells = (
@@ -164,12 +185,14 @@ def compute_thermal_centroids(df: pd.DataFrame) -> pd.DataFrame:
         .agg(
             sum_lat_frp=("lat_x_frp", "sum"),
             sum_lon_frp=("lon_x_frp", "sum"),
+            sum_time_frp=("time_x_frp", "sum"),
             cell_frp=("frp", "sum"),
             pixel_count=("frp", "count"),
         )
     )
     pass_cells["lat"] = pass_cells["sum_lat_frp"] / pass_cells["cell_frp"]
     pass_cells["lon"] = pass_cells["sum_lon_frp"] / pass_cells["cell_frp"]
+    pass_cells["acq_minutes"] = pass_cells["sum_time_frp"] / pass_cells["cell_frp"]
 
     # Aynı gün içinde birden fazla VIIRS uydusu geçerse en güçlü geçişi baz al
     pass_cells = pass_cells.sort_values("cell_frp", ascending=False)
@@ -178,21 +201,141 @@ def compute_thermal_centroids(df: pd.DataFrame) -> pd.DataFrame:
     ).copy()
 
     return daily_sensor_cells[
-        ["cell_y", "cell_x", "acq_date", "sensor", "tier", "daynight", "lat", "lon", "cell_frp", "pixel_count"]
+        ["cell_y", "cell_x", "acq_date", "acq_minutes", "sensor", "tier", "daynight", "lat", "lon", "cell_frp", "pixel_count"]
     ]
+
+
+def merge_spatiotemporal_fire_events(cells_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Aynı güne ait birbirine mekansal ve zamansal olarak yakın hücreleri
+    tek bir yangın olayı (fire event) altında fiziksel tutarlılıkla birleştirir.
+    """
+    before_count = len(cells_df)
+    if before_count == 0:
+        empty_cols = ["lat", "lon", "acq_date", "frp_harm", "frp_raw", "raw_pixels", "sensors", "tier", "daynight"]
+        return pd.DataFrame(columns=empty_cols), {"cells_before_event_merge": 0, "merged_fire_events": 0}
+
+    merged_rows = []
+
+    for acq_date, day_df in cells_df.groupby("acq_date", sort=True):
+        # En güçlü enerji çekirdeği her zaman küme tohumu (seed) olsun
+        day_df = day_df.sort_values("frp_harm", ascending=False).reset_index(drop=True)
+        n = len(day_df)
+
+        lats = day_df["lat"].to_numpy(dtype=np.float64)
+        lons = day_df["lon"].to_numpy(dtype=np.float64)
+        mins = day_df["acq_minutes"].to_numpy(dtype=np.float64)
+        frp_harms = day_df["frp_harm"].to_numpy(dtype=np.float64)
+        frp_raws = day_df["cell_frp"].to_numpy(dtype=np.float64)
+        pixels = day_df["pixel_count"].to_numpy(dtype=np.int64)
+        sensors = day_df["sensor"].to_numpy()
+        tiers = day_df["tier"].to_numpy()
+        daynights = day_df["daynight"].to_numpy()
+
+        if n == 1:
+            clusters = [[0]]
+        else:
+            # Günlük ortalama enleme göre yerel km ölçeklemesi
+            cos_lat = np.cos(np.radians(np.mean(lats)))
+            dy_km = (lats[:, None] - lats[None, :]) * KM_PER_DEG_LAT
+            dx_km = (lons[:, None] - lons[None, :]) * (KM_PER_DEG_LAT * cos_lat)
+            dist_km = np.hypot(dy_km, dx_km)
+            dt_min = np.abs(mins[:, None] - mins[None, :])
+
+            # Komşuluk koşulu: Doğrudan yakınlık (<=1.5 km) VEYA zaman+konum yakınlığı (<=2.5 km & <=6 saat)
+            adj = (dist_km <= SPATIAL_STRICT_KM) | (
+                (dist_km <= SPATIAL_MERGE_KM) & (dt_min <= TEMPORAL_WINDOW_MIN)
+            )
+
+            visited = np.zeros(n, dtype=bool)
+            clusters = []
+
+            for seed in range(n):
+                if visited[seed]:
+                    continue
+                visited[seed] = True
+                comp = [seed]
+                queue = deque([seed])
+
+                while queue:
+                    curr = queue.popleft()
+                    neighbors = np.where(adj[curr] & (~visited))[0]
+                    for nxt in neighbors:
+                        # Çekirdekten maksimum yarıçap kontrolü (aşırı zincirlemeyi önler)
+                        if dist_km[seed, nxt] <= MAX_EVENT_RADIUS_KM:
+                            visited[nxt] = True
+                            comp.append(int(nxt))
+                            queue.append(int(nxt))
+
+                clusters.append(comp)
+
+        for idx_list in clusters:
+            idx = np.array(idx_list, dtype=int)
+            w_harm = frp_harms[idx]
+            total_w = np.sum(w_harm)
+
+            # 1. FRP ağırlıklı termal kütle merkezi
+            c_lat = round(float(np.sum(lats[idx] * w_harm) / total_w), 4)
+            c_lon = round(float(np.sum(lons[idx] * w_harm) / total_w), 4)
+
+            # 2. Fiziksel enerji tutarlılığı:
+            # Aynı sensörün komşu hücreleri toplanır; farklı sensörler (MODIS vs VIIRS)
+            # aynı yangını gördüyse çift sayımı önlemek için yüksek olan sensör toplamı alınır.
+            c_sensors = sensors[idx]
+            c_raw = frp_raws[idx]
+
+            best_harm = -1.0
+            best_raw = 0.0
+            for s_name in set(c_sensors):
+                s_mask = c_sensors == s_name
+                s_harm_sum = float(np.sum(w_harm[s_mask]))
+                s_raw_sum = float(np.sum(c_raw[s_mask]))
+                if s_harm_sum > best_harm:
+                    best_harm = s_harm_sum
+                    best_raw = s_raw_sum
+
+            # 3. Diğer niteliklerin tutarlı birleştirilmesi
+            c_pixels = int(np.sum(pixels[idx]))
+            c_sensor_str = "+".join(sorted(set(c_sensors)))
+            c_tier = "nrt" if "nrt" in set(tiers[idx]) else "archive"
+            # Küme zaten frp_harm azalan sırada olduğu için idx[0] en güçlü çekirdektir
+            c_daynight = str(daynights[idx[0]])
+
+            merged_rows.append({
+                "lat": c_lat,
+                "lon": c_lon,
+                "acq_date": acq_date,
+                "frp_harm": round(best_harm, 1),
+                "frp_raw": round(best_raw, 1),
+                "raw_pixels": c_pixels,
+                "sensors": c_sensor_str,
+                "tier": c_tier,
+                "daynight": c_daynight,
+            })
+
+    merged_df = pd.DataFrame(merged_rows)
+    after_count = len(merged_df)
+    reduction_pct = round((1.0 - after_count / max(before_count, 1)) * 100, 1)
+    print(f"      -> Mekansal-zamansal olay birleştirme: {before_count} hücre -> {after_count} tekil yangın olayı (%{reduction_pct} sadeleşme)")
+
+    merge_stats = {
+        "cells_before_event_merge": int(before_count),
+        "merged_fire_events": int(after_count),
+        "event_merge_reduction_pct": float(reduction_pct),
+    }
+    return merged_df, merge_stats
 
 
 def apply_quantile_harmonization(cells_df: pd.DataFrame, filter_stats: dict) -> tuple[pd.DataFrame, dict]:
     """
-    ADIM 3 & 4: Gece (N) ve Gündüz (D) rejimi için ayrı alt algılama eşiği (tau_MODIS)
-    ve 2012-2026 örtüşme döneminden Kantil Eşleme (CDF Matching) uygular.
+    ADIM 3 & 4: Gece (N) ve Gündüz (D) rejimi için ayrı alt algılama eşiği (tau_MODIS),
+    2012-2026 örtüşme döneminden Kantil Eşleme (CDF Matching) ve olay bazlı birleştirme uygular.
     """
-    print("[3/4] Gece/Gündüz ayrımlı Kantil Eşleme (CDF Matching) ve doğrulama uygulanıyor...")
+    print("[3/4] Gece/Gündüz ayrımlı Kantil Eşleme (CDF Matching) ve olay birleştirme uygulanıyor...")
 
     overlap_mask = (cells_df["acq_date"] >= "2012-01-20") & (cells_df["tier"] == "archive")
     q_grid = np.linspace(0, 100, 1001)
 
-    # Genel referans eşiği (raporlama için) ve Gece/Gündüz ayrımlı eşikler
     modis_all_overlap = cells_df[overlap_mask & (cells_df["sensor"] == "MODIS")]["cell_frp"].values
     tau_global = float(np.percentile(modis_all_overlap, 5)) if len(modis_all_overlap) else 5.0
 
@@ -251,7 +394,7 @@ def apply_quantile_harmonization(cells_df: pd.DataFrame, filter_stats: dict) -> 
     rmse_raw = float(np.sqrt(np.mean((viirs_quantiles[:950] - modis_quantiles[:950]) ** 2)))
     rmse_harm = float(np.sqrt(np.mean((viirs_harm_quantiles[:950] - modis_quantiles[:950]) ** 2)))
 
-    # 2012-2025 Örtüşme Dönemi Aylık Seri Korelasyonu (R^2)
+    # Örtüşme Dönemi Aylık Seri Korelasyonu (R^2)
     ov_df = cells_df[overlap_clean].copy()
     ov_df["ym"] = ov_df["acq_date"].dt.to_period("M")
     m_monthly = ov_df[ov_df["sensor"] == "MODIS"].groupby("ym")["frp_harm"].sum()
@@ -264,28 +407,8 @@ def apply_quantile_harmonization(cells_df: pd.DataFrame, filter_stats: dict) -> 
     else:
         r2_score = 0.92
 
-    # Aynı gün aynı 1x1 km karede hem MODIS hem VIIRS varsa tek olay olarak birleştir
-    cells_df["lat_w"] = cells_df["lat"] * cells_df["frp_harm"]
-    cells_df["lon_w"] = cells_df["lon"] * cells_df["frp_harm"]
-
-    harmonized = (
-        cells_df.groupby(["cell_y", "cell_x", "acq_date"], as_index=False)
-        .agg(
-            sum_lat_w=("lat_w", "sum"),
-            sum_lon_w=("lon_w", "sum"),
-            sum_frp_w=("frp_harm", "sum"),
-            frp_harm=("frp_harm", "max"),
-            frp_raw=("cell_frp", "max"),
-            raw_pixels=("pixel_count", "sum"),
-            sensors=("sensor", lambda s: "+".join(sorted(set(s)))),
-            tier=("tier", lambda t: "nrt" if "nrt" in set(t) else "archive"),
-            daynight=("daynight", "first"),
-        )
-    )
-    harmonized["lat"] = (harmonized["sum_lat_w"] / harmonized["sum_frp_w"]).round(4)
-    harmonized["lon"] = (harmonized["sum_lon_w"] / harmonized["sum_frp_w"]).round(4)
-    harmonized["frp_harm"] = harmonized["frp_harm"].round(1)
-    harmonized["frp_raw"] = harmonized["frp_raw"].round(1)
+    # Aynı güne ait yakın konumlu ve yakın zamanlı tespitleri tek yangın olayında birleştir
+    harmonized, merge_stats = merge_spatiotemporal_fire_events(cells_df)
 
     sample_idx = np.linspace(0, 1000, 21, dtype=int)
     cal_report = {
@@ -295,6 +418,7 @@ def apply_quantile_harmonization(cells_df: pd.DataFrame, filter_stats: dict) -> 
         "censored_micro_fires": int(censored_count),
         "removed_static_sources": filter_stats["removed_static_records"],
         "masked_industrial_cells": filter_stats["masked_industrial_zones"],
+        **merge_stats,
         "overlap_r2_score": round(r2_score, 4),
         "quantile_rmse_raw_mw": round(rmse_raw, 2),
         "quantile_rmse_harm_mw": round(rmse_harm, 2),
